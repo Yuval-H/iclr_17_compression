@@ -7,6 +7,8 @@ from torch.utils.data.dataset import Dataset
 # from data_loader.datasets import Dataset
 import torch
 import pdb
+from utils.image_utils import randFlipStereoImage
+import glob
 
 
 class Datasets(Dataset):
@@ -74,6 +76,59 @@ class TestKodakDataset(Dataset):
 
     def __len__(self):
         return len(self.image_path)
+
+class StereoDataset(Dataset):
+    """Stereo Image Pairs dataset."""
+    def __init__(self, stereo1_dir, stereo2_dir, randomFlip=False, RandomCrop=False, transform=transforms.ToTensor()):
+        """
+        Args:
+            stereo1_dir (string): Directory with all the images.
+            stereo2_dir (string): Directory with all the images, from the second camera.
+                note1: matching images from the two folders are assumed to have the same names.
+                note2: assumes *png* images
+            transform (optional): Optional transform to be applied on the images.
+        """
+        self.stereo1_dir = stereo1_dir
+        self.stereo2_dir = stereo2_dir
+        self.stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
+        self.transform = transform
+        self.randomFlip = randomFlip
+        self.RandomCrop = RandomCrop
+
+    def __len__(self):
+        return len(self.stereo1_path_list)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_stereo1 = Image.open(self.stereo1_path_list[idx])
+        img_stereo2_name = os.path.join(self.stereo2_dir, os.path.basename(self.stereo1_path_list[idx]))
+        try:
+            img_stereo2 = Image.open(img_stereo2_name)
+        except ValueError:
+            raise ValueError("Error when reading stereo2-image. Image names in both folder should be the same.")
+
+        if self.transform:
+            img_stereo1 = self.transform(img_stereo1)
+            img_stereo2 = self.transform(img_stereo2)
+
+        if self.RandomCrop:
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(192, 192))
+            img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
+            img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
+
+        if self.randomFlip:
+            # convert to numpy, do augmentation, convert back to tensor
+            im1_np = img_stereo1.permute(1, 2, 0).detach().cpu().numpy()
+            im2_np = img_stereo2.permute(1, 2, 0).detach().cpu().numpy()
+            img_stereo1, img_stereo2 = randFlipStereoImage(im1_np, im2_np)
+            img_stereo1 = torch.tensor(img_stereo1.copy()).permute(2, 0, 1)
+            img_stereo2 = torch.tensor(img_stereo2.copy()).permute(2, 0, 1)
+
+        return img_stereo1, img_stereo2
+
+
 
 def build_dataset():
     train_set_dir = '/data1/liujiaheng/data/compression/Flick_patch/'

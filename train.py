@@ -26,15 +26,15 @@ image_size = 256
 logger = logging.getLogger("ImageCompression")
 tb_logger = None
 global_step = 0
-save_model_freq = 50000
+save_model_freq = 600000 # 500000
 parser = argparse.ArgumentParser(description='Pytorch reimplement for variational image compression with a scale hyperprior')
 
 parser.add_argument('-n', '--name', default='',
         help='output training details')
-parser.add_argument('-p', '--pretrain', default = '',
+parser.add_argument('-p', '--pretrain', default='',
         help='load pretrain model')
 parser.add_argument('--test', action='store_true')
-parser.add_argument('--config', dest='config', required=False,
+parser.add_argument('--config', dest='config', required=False,default = '/home/access/dev/iclr_17_compression/examples/example/config.json',
         help = 'hyperparameter in json format')
 parser.add_argument('--seed', default=234, type=int, help='seed for random functions, and network initialization')
 
@@ -99,7 +99,8 @@ def train(epoch, global_step):
         # print("debug", mse_loss, " ", bpp_feature, " ", bpp_z, " ", bpp)
         distribution_loss = bpp
         distortion = mse_loss
-        rd_loss = train_lambda * distortion + distribution_loss
+        #rd_loss = train_lambda * distortion + distribution_loss
+        rd_loss = distortion
         optimizer.zero_grad()
         rd_loss.backward()
         def clip_gradient(optimizer, grad_clip):
@@ -155,7 +156,7 @@ def train(epoch, global_step):
 
 def testKodak(step):
     with torch.no_grad():
-        test_dataset = TestKodakDataset(data_dir='/data1/liujiaheng/data/compression/kodak')
+        test_dataset = TestKodakDataset(data_dir='/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_set_194_(192*324)')
         test_loader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=1, pin_memory=True, num_workers=1)
         net.eval()
         sumBpp = 0
@@ -231,13 +232,13 @@ if __name__ == "__main__":
     # save_model(model, 0)
     global train_loader
     tb_logger = SummaryWriter(os.path.join(save_path, 'events'))
-    train_data_dir = '/data1/liujiaheng/data/compression/Flick_patch'
+    train_data_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_set_194_(192*324)'#'/data1/liujiaheng/data/compression/Flick_patch'
     train_dataset = Datasets(train_data_dir, image_size)
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=batch_size,
                               shuffle=True,
                               pin_memory=True,
-                              num_workers=2)
+                              num_workers=1)
     steps_epoch = global_step // (len(train_dataset) // (batch_size))# * gpu_num))
     save_model(model, global_step, save_path)
     for epoch in range(steps_epoch, tot_epoch):
@@ -246,4 +247,5 @@ if __name__ == "__main__":
             save_model(model, global_step, save_path)
             break
         global_step = train(epoch, global_step)
-        save_model(model, global_step, save_path)
+        if epoch%25 == 0:
+            save_model(model, global_step, save_path)

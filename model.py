@@ -45,7 +45,7 @@ class ImageCompressor(nn.Module):
 
     def forward(self, input_image):
         quant_noise_feature = torch.zeros(input_image.size(0), self.out_channel_N, input_image.size(2) // 16, input_image.size(3) // 16).cuda()
-        quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -0.5, 0.5)
+        quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -0.05, 0.05) # was -0.5, 0.5) before I added sigmoid
         feature = self.Encoder(input_image)
         batch_size = feature.size()[0]
         feature_renorm = feature

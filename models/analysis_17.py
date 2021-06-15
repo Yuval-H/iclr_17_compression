@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch
 from .GDN import GDN
 import math
+from models.binarizer import *
 
 class Analysis_net_17(nn.Module):
     '''
@@ -20,6 +21,7 @@ class Analysis_net_17(nn.Module):
         self.gdn2 = GDN(out_channel_N)
         self.conv3 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2, bias=False)
         torch.nn.init.xavier_normal_(self.conv3.weight.data, math.sqrt(2))
+        self.head = nn.Sequential(nn.Sigmoid(), Lambda(bin_values))
         # torch.nn.init.constant_(self.conv3.bias.data, 0.01)
         # self.gdn3 = GDN(out_channel_N)
         # self.conv4 = nn.Conv2d(out_channel_N, out_channel_M, 5, stride=2, padding=2)
@@ -30,6 +32,7 @@ class Analysis_net_17(nn.Module):
         x = self.gdn1(self.conv1(x))
         x = self.gdn2(self.conv2(x))
         x = self.conv3(x)
+        x = self.head(x)
         return x
 
 
