@@ -156,7 +156,7 @@ def train(epoch, global_step):
 
 def testKodak(step):
     with torch.no_grad():
-        test_dataset = TestKodakDataset(data_dir='/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_set_194_(192*324)')
+        test_dataset = TestKodakDataset(data_dir='/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2')
         test_loader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=1, pin_memory=True, num_workers=1)
         net.eval()
         sumBpp = 0
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     # save_model(model, 0)
     global train_loader
     tb_logger = SummaryWriter(os.path.join(save_path, 'events'))
-    train_data_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_set_194_(192*324)'#'/data1/liujiaheng/data/compression/Flick_patch'
+    train_data_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2'#'/data1/liujiaheng/data/compression/Flick_patch'
     train_dataset = Datasets(train_data_dir, image_size)
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=batch_size,

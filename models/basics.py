@@ -15,8 +15,9 @@ from torch.autograd import Variable
 import imageio
 
 
-out_channel_N = 192
-out_channel_M = 320
+#out_channel_N = 192
+#out_channel_M = 320
+
 # out_channel_N = 128
 # out_channel_M = 192
 

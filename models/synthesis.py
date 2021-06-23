@@ -9,7 +9,7 @@ class Synthesis_net(nn.Module):
     '''
     Decode synthesis
     '''
-    def __init__(self):
+    def __init__(self, out_channel_N=192, out_channel_M=320):
         super(Synthesis_net, self).__init__()
         self.deconv1 = nn.ConvTranspose2d(out_channel_M, out_channel_N, 5, stride=2, padding=2, output_padding=1)
         torch.nn.init.xavier_normal_(self.deconv1.weight.data, (math.sqrt(2 * 1 * (out_channel_M + out_channel_N) / (out_channel_M + out_channel_M))))

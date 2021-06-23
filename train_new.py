@@ -5,35 +5,37 @@ from torchvision import transforms
 from datasets import StereoDataset
 import time
 import torchvision
-from losses import MSE_and_Contrastive_loss, L1_and_Contrastive_loss, MSE_and_pairHamming_loss
+from losses import MSE_and_Contrastive_loss, L1_and_Contrastive_loss, MSE_and_pairHamming_loss, L1_and_pairHamming_loss
 from model_new import *
+from model_small import ImageCompressor_small
 
 
 ############## Train parameters ##############
 #train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
 #train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
-#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_set_194_(192*324)'
-#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_set_194_(192*324)'
+train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2'
+train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2'
 
-train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
-train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
+#train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
+#train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 val_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
 val_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
 batch_size = 4
 lr_start = 1e-4
-epoch_patience = 180
+epoch_patience = 150
 n_epochs = 25000
-val_every = 25
-save_every = 200
+val_every = 25000
+save_every = 2000
 useOnlyStereoPairsDistance = False
+hammingLossOnBinaryZ = False
 start_from_pretrained = ''
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/small factor 4/recon only'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/diff_img2/diff_img2_N=32'
 
 ################ Data transforms ################
 #tsfm = transforms.Compose([transforms.Resize((384, 1216), interpolation=3), transforms.ToTensor()])
-#tsfm = transforms.Compose([transforms.Resize((384, 1248), interpolation=3), transforms.ToTensor()])
+tsfm = transforms.Compose([transforms.Resize((384, 1248), interpolation=3), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.Resize((192, 624), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
-tsfm = transforms.Compose([transforms.Resize((96, 320), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
+#tsfm = transforms.Compose([transforms.Resize((96, 320), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.ToTensor()])
 
 
@@ -42,7 +44,7 @@ torch.manual_seed(1234)
 torch.cuda.manual_seed_all(1234)
 
 
-training_data = StereoDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2, randomFlip=True, RandomCrop=False, transform=tsfm)
+training_data = StereoDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2, randomFlip=False, RandomCrop=True, transform=tsfm)
 val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm)
 
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
@@ -53,8 +55,10 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Using {} device'.format(device))
 
 # Load model:
-model = ImageCompressor_new(out_channel_N=256)
+#model = ImageCompressor_new(out_channel_N=256)
+model = ImageCompressor_new(out_channel_N=32)
 #model = ImageCompressor_new()
+#model = ImageCompressor_small()
 if start_from_pretrained != '':
     global_step_ignore = load_model(model, start_from_pretrained)
 model = model.to(device)
@@ -66,6 +70,7 @@ model.train()
 
 #criterion = MSE_and_Contrastive_loss(eps=0.1, useOnlyPair=useOnlyStereoPairsDistance)
 criterion = MSE_and_pairHamming_loss(eps=0)
+#criterion = L1_and_pairHamming_loss(eps=1)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
 #optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
@@ -86,8 +91,11 @@ for epoch in range(1, n_epochs + 1):
 
         optimizer.zero_grad()
 
-        outputs_cam1, z_cam1 = model(images_cam1)
-        outputs_cam2, z_cam2 = model(images_cam2)
+        outputs_cam1, z_binary1, z_cam1 = model(images_cam1)
+        outputs_cam2, z_binary2, z_cam2 = model(images_cam2)
+        if hammingLossOnBinaryZ:
+            z_cam1 = z_binary1
+            z_cam2 = z_binary2
 
         loss = criterion(outputs_cam1, z_cam1, outputs_cam2, z_cam2, images_cam1, images_cam2)
         #loss = criterion(outputs_cam1, images_cam1) + criterion(outputs_cam2, images_cam2)

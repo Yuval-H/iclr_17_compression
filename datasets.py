@@ -19,7 +19,7 @@ class Datasets(Dataset):
         if not os.path.exists(data_dir):
             raise Exception(f"[!] {self.data_dir} not exitd")
 
-        self.image_path = sorted(glob(os.path.join(self.data_dir, "*.*")))
+        self.image_path = sorted(glob.glob(os.path.join(self.data_dir, "*.*")))
 
     def __getitem__(self, item):
         image_ori = self.image_path[item]
@@ -114,7 +114,7 @@ class StereoDataset(Dataset):
             img_stereo2 = self.transform(img_stereo2)
 
         if self.RandomCrop:
-            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(192, 192))
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(384, 384))
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
 

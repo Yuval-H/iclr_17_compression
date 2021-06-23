@@ -46,18 +46,18 @@ class ImageCompressor_new(nn.Module):
     def forward(self, input_image):
         quant_noise_feature = torch.zeros(input_image.size(0), self.out_channel_N, input_image.size(2) // 16, input_image.size(3) // 16).cuda()
         quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -0.05, 0.05) # was -0.5, 0.5) before I added sigmoid
-        feature = self.Encoder(input_image)
+        feature, feature_before_thresh = self.Encoder(input_image)
         batch_size = feature.size()[0]
         feature_renorm = feature
         if self.training:
-            compressed_feature_renorm = feature_renorm + quant_noise_feature
+            compressed_feature_renorm = feature_renorm #+ quant_noise_feature
         else:
             compressed_feature_renorm = torch.round(feature_renorm)
         recon_image = self.Decoder(compressed_feature_renorm)
         # recon_image = prediction + recon_res
         clipped_recon_image = recon_image.clamp(0., 1.)
         # distortion
-        mse_loss = torch.mean((recon_image - input_image).pow(2))
+        #mse_loss = torch.mean((recon_image - input_image).pow(2))
 
 
-        return clipped_recon_image, feature
+        return clipped_recon_image, feature, feature_before_thresh

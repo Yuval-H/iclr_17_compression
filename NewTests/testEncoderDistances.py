@@ -9,7 +9,7 @@ from model_new import *
 
 
 #pretrained_model_path ='/home/access/dev/iclr_17_compression/checkpoints/iter_471527.pth.tar'
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/1bpp_out_channel_N=256/start from scratch- recon only/iter_661.pth.tar' #/home/access/dev/iclr_17_compression/checkpoints_new/startPretrained_newOnlyPairLoss_randCrop/iter_2.pth.tar'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/overfit - tries/32 -pairs/96*320/rec+hamm/iter_9.pth.tar'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = ImageCompressor_new(out_channel_N=256)
@@ -26,7 +26,9 @@ stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train
 stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
 
 # transforms to fit model size
-data_transforms = transforms.Compose([transforms.Resize((384, 1216)), transforms.ToTensor()])
+#data_transforms = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
+data_transforms = transforms.Compose([transforms.Resize((96, 320), interpolation=3), transforms.ToTensor()])
+
 
 img_n = 0
 scenario_number = os.path.basename(stereo1_path_list[img_n])[:-6]
@@ -46,8 +48,8 @@ for i in range(len(stereo1_path_list)):
     tensor_image = data_transforms(image2)
     input2 = tensor_image[None, ...].to(device)
     # Encode images:
-    outputs_cam1, encoded = net(input1)
-    outputs_cam1, encoded2 = net(input2)
+    outputs_cam1, encoded, _ = net(input1)
+    outputs_cam1, encoded2, _ = net(input2)
     e1 = torch.squeeze(encoded.cpu()).detach().numpy().flatten()
     e2 = torch.squeeze(encoded2.cpu()).detach().numpy().flatten()
     hamm_dist = (e1 != e2).sum()

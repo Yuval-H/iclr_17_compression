@@ -75,11 +75,34 @@ class MSE_and_pairHamming_loss(nn.Module):
         self.margin = margin
         self.p_one = p_one
         self.mse = nn.MSELoss()
+        self.L1loss = nn.L1Loss()
 
     def forward(self, outputs1, z1, outputs2, z2, input1, input2):
         reconstruction_loss = torch.mean((outputs1-input1).pow(2)) + torch.mean((outputs2-input2).pow(2))  #self.mse(outputs1, input1) + self.mse(outputs2, input2)
+        #reconstruction_loss = self.L1loss(outputs1, input1) + self.L1loss(outputs2, input2)
         # Hamming distance and codes-p
-        pairHaaming_loss = torch.mean((z1-z2).pow(2))  #self.mse(z1,z2)
+        pairHaaming_loss = torch.mean((z1-z2).pow(2))
+        #pairHaaming_loss = self.L1loss(z1, z2)
+        if pairHaaming_loss > self.margin:
+            pairHaaming_loss = pairHaaming_loss - self.margin
+        # # Make sure code is not all zeros
+        # p_one = 0.5*torch.mean(z1.pow(2)) + 0.5*torch.mean(z2.pow(2))
+        # p_one_loss = torch.sqrt((p_one - self.p_one).pow(2))
+        # code_loss = 0.7*pairHaaming_loss + 0.3*p_one_loss
+        code_loss = pairHaaming_loss
+        return reconstruction_loss + self.eps*code_loss
+
+class L1_and_pairHamming_loss(nn.Module):
+    def __init__(self, eps=1, margin=0.01, p_one=0.45):
+        super(L1_and_pairHamming_loss, self).__init__()
+        self.eps = eps
+        self.margin = margin
+        self.L1loss = CharbonnierLoss()  # nn.L1Loss()
+
+    def forward(self, outputs1, z1, outputs2, z2, input1, input2):
+        reconstruction_loss = self.L1loss(outputs1, input1) + self.L1loss(outputs2, input2)
+        # Hamming distance and codes-p
+        pairHaaming_loss = self.L1loss(z1, z2)
         if pairHaaming_loss > self.margin:
             pairHaaming_loss = pairHaaming_loss - self.margin
         # # Make sure code is not all zeros
@@ -116,7 +139,7 @@ class L1_and_Contrastive_loss(nn.Module):
         super(L1_and_Contrastive_loss, self).__init__()
         self.eps = eps
         self.margin = margin
-        self.L1loss = nn.L1Loss()
+        self.L1loss = CharbonnierLoss()  # nn.L1Loss()
         self.contrastive_loss = Contrastive_loss()
         self.contrastive_pair_loss = Contrastive_loss_pairsOnly()
 

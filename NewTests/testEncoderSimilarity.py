@@ -6,14 +6,16 @@ from PIL import Image
 import glob
 import numpy as np
 from model_new import *
+from model_small import ImageCompressor_small
 
 
 #pretrained_model_path ='/home/access/dev/iclr_17_compression/checkpoints/iter_471527.pth.tar'
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/small image factor2/full-loss _ from pretrained/iter_240.pth.tar'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new loss - L1 before binarize/rec+hamm/iter_24.pth.tar'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = ImageCompressor_new(out_channel_N=256)
 #model = ImageCompressor_new()
+#model = ImageCompressor_small()
 global_step_ignore = load_model(model, pretrained_model_path)
 net = model.to(device)
 net.eval()
@@ -21,12 +23,12 @@ net.eval()
 
 
 
-#stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
-#stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
+stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
+stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
 
 # smaller dataset:
-stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
+#stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+#stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
 stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
 
@@ -51,8 +53,8 @@ for i in range(len(stereo1_path_list)):
     input2 = img_stereo2[None, ...].to(device)
 
     # Encoded images:
-    outputs_cam1, encoded = net(input1)
-    outputs_cam2, encoded2 = net(input2)
+    outputs_cam1, encoded, _ = net(input1)
+    outputs_cam2, encoded2, _ = net(input2)
 
     e1 = torch.squeeze(encoded.cpu()).detach().numpy().flatten()
     e2 = torch.squeeze(encoded2.cpu()).detach().numpy().flatten()

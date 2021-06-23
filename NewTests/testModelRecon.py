@@ -8,32 +8,37 @@ import glob
 import numpy as np
 # from model import *
 from model_new import *
+from model_small import ImageCompressor_small
 
 
-pretrained_model_path ='/home/access/dev/iclr_17_compression/checkpoints_new/small image factor2/full-loss _ from pretrained/iter_240.pth.tar'
-#pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/small image factor2/full-loss _ from pretrained/iter_1256.pth.tar'
+#pretrained_model_path ='/home/access/dev/iclr_17_compression/checkpoints_new/small image factor2/full-loss _ from pretrained/iter_240.pth.tar'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/diff_img2_N=32/rec/iter_853.pth.tar'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = ImageCompressor_new()
+#model = ImageCompressor_new(out_channel_N=16)
 model = ImageCompressor_new(out_channel_N=256)
+#model = ImageCompressor_small()
 global_step_ignore = load_model(model, pretrained_model_path)
 net = model.to(device)
 net.eval()
 
 
 #stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
-#stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_set_194_(376*1240)'
+#stereo1_dir = '/home/access/dev/data_sets/kitti/upsample - try/original'
 # smaller dataset:
-stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+#stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_02'
+
+# diff images:
+stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2'
 
 
 stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
 # transforms to fit model size
-#data_transforms = transforms.Compose([transforms.Resize((384, 1216),interpolation=3), transforms.ToTensor()])
-#data_transforms = transforms.Compose([transforms.Resize((384, 1248),interpolation=3), transforms.ToTensor()])
-data_transforms = transforms.Compose([transforms.Resize((192, 624), interpolation=3), transforms.ToTensor()])
+data_transforms = transforms.Compose([transforms.Resize((384, 1248),interpolation=3), transforms.ToTensor()])
+#data_transforms = transforms.Compose([transforms.Resize((192, 624), interpolation=3), transforms.ToTensor()])
 #data_transforms = transforms.Compose([transforms.Resize((96, 320), interpolation=3), transforms.ToTensor()])
-
+#data_transforms = transforms.Compose([transforms.ToTensor()])
 
 
 avg_mse = 0
@@ -49,7 +54,7 @@ for i in range(len(stereo1_path_list)):
     # Run image through the model
     tensor_image1 = data_transforms(image1)
     input1 = tensor_image1[None, ...].to(device)
-    clipped_recon_image, z_cam1 = net(input1)
+    clipped_recon_image, _, _ = net(input1)
 
     # Calc MSE
     numpy_input_image = tensor_image1.permute(1, 2, 0).detach().numpy()
@@ -90,7 +95,7 @@ if plot_best_and_worst:
     img1_minDist_input = Image.open(stereo1_path_list[min_idx])
     tensor_image1 = data_transforms(img1_minDist_input)
     input1 = tensor_image1[None, ...].to(device)
-    clipped_recon_image, z_cam1 = net(input1)
+    clipped_recon_image, _, _ = net(input1)
     img1_minDist_input = tensor_image1.permute(1, 2, 0).detach().numpy()
     #img1_minDist_input = img1_minDist_input * 0.5 + 0.5
 
@@ -102,7 +107,7 @@ if plot_best_and_worst:
     img1_maxDist_input = Image.open(stereo1_path_list[max_idx])
     tensor_image1 = data_transforms(img1_maxDist_input)
     input1 = tensor_image1[None, ...].to(device)
-    clipped_recon_image, z_cam1 = net(input1)
+    clipped_recon_image, _, _ = net(input1)
     img1_maxDist_input = tensor_image1.permute(1, 2, 0).detach().numpy()
     tensor_output_image = torch.squeeze(clipped_recon_image).permute(1, 2, 0)
     img1_maxDist_output = tensor_output_image.cpu().detach().numpy()
