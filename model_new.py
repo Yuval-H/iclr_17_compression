@@ -13,6 +13,7 @@ import torch.nn.init as init
 import logging
 from torch.nn.parameter import Parameter
 from models import *
+from models.analysis_17_new import Analysis_net_17_new
 
 
 def save_model(model, iter, name):
@@ -38,17 +39,16 @@ def load_model(model, f):
 class ImageCompressor_new(nn.Module):
     def __init__(self, out_channel_N=128):
         super(ImageCompressor_new, self).__init__()
-        self.Encoder = Analysis_net_17(out_channel_N=out_channel_N)
+        #self.Encoder = Analysis_net_17_new(out_channel_N=out_channel_N)
+        self.Encoder = Analysis_net_17_new(out_channel_N=out_channel_N)
         self.Decoder = Synthesis_net_17(out_channel_N=out_channel_N)
         self.bitEstimator = BitEstimator(channel=out_channel_N)
         self.out_channel_N = out_channel_N
 
     def forward(self, input_image):
-        quant_noise_feature = torch.zeros(input_image.size(0), self.out_channel_N, input_image.size(2) // 16, input_image.size(3) // 16).cuda()
-        quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -0.05, 0.05) # was -0.5, 0.5) before I added sigmoid
         feature, feature_before_thresh = self.Encoder(input_image)
-        batch_size = feature.size()[0]
         feature_renorm = feature
+        #quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(feature), -0.7, 0.7)
         if self.training:
             compressed_feature_renorm = feature_renorm #+ quant_noise_feature
         else:
@@ -60,4 +60,5 @@ class ImageCompressor_new(nn.Module):
         #mse_loss = torch.mean((recon_image - input_image).pow(2))
 
 
-        return clipped_recon_image, feature, feature_before_thresh
+        return clipped_recon_image, compressed_feature_renorm, feature_before_thresh
+        #return clipped_recon_image, compressed_feature_renorm

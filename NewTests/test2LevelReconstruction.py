@@ -8,6 +8,7 @@ from PIL import Image, ImageChops
 import glob
 import numpy as np
 from model_new import *
+from model import *
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -21,9 +22,10 @@ model_orig = model_orig.to(device)
 model_orig.eval()
 
 # Load the small images AE model
-model_diff_weights = '/home/access/dev/iclr_17_compression/checkpoints_new/diff_img2_N=32/rec/iter_853.pth.tar'
+model_diff_weights = '/home/access/dev/iclr_17_compression/checkpoints/iter_117600.pth.tar'
 #model_diff = ImageCompressor_new()
-model_diff = ImageCompressor_new(out_channel_N=256)
+#model_diff = ImageCompressor_new(out_channel_N=32)
+model_diff = ImageCompressor()
 global_step_ignore = load_model(model_diff, model_diff_weights)
 model_diff = model_diff.to(device)
 model_diff.eval()
@@ -33,7 +35,8 @@ tsfm_original = transforms.Compose([transforms.Resize((384, 1248), interpolation
 tsfm_original_tensor = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
 tsfm_tensor = transforms.Compose([transforms.ToTensor()])
 
-path = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
+#path = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
+path = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_02'
 files = os.listdir(path)
 avg_psnr = 0
 for i in range(len(files)):

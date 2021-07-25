@@ -5,13 +5,15 @@ from torchvision import transforms
 from PIL import Image, ImageChops
 #import numpy as np
 from model_new import *
+from model import *
 
 
 # Load the small images AE model
-model_weights = '/home/access/dev/iclr_17_compression/checkpoints_new/new loss - L2 before binarize/rec+hamm/iter_3.pth.tar'
+model_weights = '/home/access/dev/iclr_17_compression/checkpoints_new/new loss - L2 before binarize/rec/iter_413.pth.tar'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = ImageCompressor_new()
 model = ImageCompressor_new(out_channel_N=256)
+#model = ImageCompressor()
 global_step_ignore = load_model(model, model_weights)
 net = model.to(device)
 net.eval()
@@ -21,7 +23,7 @@ tsfm_original = transforms.Compose([transforms.Resize((384, 1248), interpolation
 tsfm_original_tensor = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
 
 
-path = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
+path = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/temp'
 save_path = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2'
 files = os.listdir(path)
 

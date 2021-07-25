@@ -25,7 +25,7 @@ class Datasets(Dataset):
         image_ori = self.image_path[item]
         image = Image.open(image_ori).convert('RGB')
         transform = transforms.Compose([
-            # transforms.RandomResizedCrop(self.image_size),
+            transforms.RandomResizedCrop(self.image_size),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
             transforms.ToTensor(),
@@ -114,7 +114,7 @@ class StereoDataset(Dataset):
             img_stereo2 = self.transform(img_stereo2)
 
         if self.RandomCrop:
-            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(384, 384))
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(256, 256))
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
 
@@ -126,9 +126,56 @@ class StereoDataset(Dataset):
             img_stereo1 = torch.tensor(img_stereo1.copy()).permute(2, 0, 1)
             img_stereo2 = torch.tensor(img_stereo2.copy()).permute(2, 0, 1)
 
+
         return img_stereo1, img_stereo2
 
 
+class StereoPlusDataset(Dataset):
+    """Stereo Image Pairs dataset + added  image for contrastive learning."""
+    def __init__(self, stereo1_dir, stereo2_dir, contrast_dir, RandomCrop=False, transform=transforms.ToTensor()):
+        """
+        Args:
+            stereo1_dir (string): Directory with all the images.
+            stereo2_dir (string): Directory with all the images, from the second camera.
+                note1: matching images from the two folders are assumed to have the same names.
+                note2: assumes *png* images
+            transform (optional): Optional transform to be applied on the images.
+        """
+        self.stereo1_dir = stereo1_dir
+        self.stereo2_dir = stereo2_dir
+        self.stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
+        self.contrast_path_list = glob.glob(os.path.join(contrast_dir, '*png'))
+        self.transform = transform
+        self.transforms_cont = transforms.Compose([transforms.RandomResizedCrop(368), transforms.ToTensor()])
+        self.RandomCrop = RandomCrop
+
+    def __len__(self):
+        return len(self.stereo1_path_list)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_stereo1 = Image.open(self.stereo1_path_list[idx])
+        img_stereo2_name = os.path.join(self.stereo2_dir, os.path.basename(self.stereo1_path_list[idx]))
+        try:
+            img_stereo2 = Image.open(img_stereo2_name)
+        except ValueError:
+            raise ValueError("Error when reading stereo2-image. Image names in both folder should be the same.")
+
+        img_contrast = Image.open(self.contrast_path_list[idx])
+        if self.transform:
+            img_stereo1 = self.transform(img_stereo1)
+            img_stereo2 = self.transform(img_stereo2)
+            img_contrast = self.transforms_cont(img_contrast)
+
+        if self.RandomCrop:
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(368, 368))
+            img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
+            img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
+
+
+        return img_stereo1, img_stereo2, img_contrast
 
 def build_dataset():
     train_set_dir = '/data1/liujiaheng/data/compression/Flick_patch/'

@@ -42,6 +42,7 @@ class ImageCompressor(nn.Module):
         self.Decoder = Synthesis_net_17(out_channel_N=out_channel_N)
         self.bitEstimator = BitEstimator(channel=out_channel_N)
         self.out_channel_N = out_channel_N
+        self.fc = nn.Linear(233472, 233472/2)
 
     def forward(self, input_image):
         quant_noise_feature = torch.zeros(input_image.size(0), self.out_channel_N, input_image.size(2) // 16, input_image.size(3) // 16).cuda()
@@ -76,4 +77,5 @@ class ImageCompressor(nn.Module):
         im_shape = input_image.size()
         bpp_feature = total_bits_feature / (batch_size * im_shape[2] * im_shape[3])
 
-        return clipped_recon_image, mse_loss, bpp_feature
+        return clipped_recon_image, compressed_feature_renorm, bpp_feature
+        #return clipped_recon_image, mse_loss, bpp_feature

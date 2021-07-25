@@ -33,9 +33,10 @@ class Analysis_net_17(nn.Module):
         x = self.gdn1(self.conv1(x))
         x = self.gdn2(self.conv2(x))
         x = self.conv3(x)
-        x = self.sigmoid(x)
-        code = self.binarize(x)
-        return code, x
+        #x = self.sigmoid(x)
+        #code = self.binarize(x)
+        #return code, x
+        return x
 
 
 def build_model():

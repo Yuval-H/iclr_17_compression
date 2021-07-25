@@ -99,8 +99,8 @@ def train(epoch, global_step):
         # print("debug", mse_loss, " ", bpp_feature, " ", bpp_z, " ", bpp)
         distribution_loss = bpp
         distortion = mse_loss
-        #rd_loss = train_lambda * distortion + distribution_loss
-        rd_loss = distortion
+        rd_loss = train_lambda * distortion + distribution_loss
+        #rd_loss = distortion
         optimizer.zero_grad()
         rd_loss.backward()
         def clip_gradient(optimizer, grad_clip):
@@ -148,7 +148,7 @@ def train(epoch, global_step):
             # print("Compute time", compute_time)
             # print("Model time", model_time)
         if (global_step % save_model_freq) == 0:
-            save_model(model, global_step, save_path)
+            #save_model(model, global_step, save_path)
             testKodak(global_step)
             net.train()
     return global_step
@@ -156,7 +156,9 @@ def train(epoch, global_step):
 
 def testKodak(step):
     with torch.no_grad():
-        test_dataset = TestKodakDataset(data_dir='/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2')
+        test_dataset = TestKodakDataset(data_dir='/home/access/dev/data_sets/CLIC2021/professional_test_2021')
+        # patch YH: fit image to be multiple of 16
+        #test_dataset = Datasets(data_dir='/home/access/dev/data_sets/CLIC2021/professional_test_2021', image_size=512)
         test_loader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=1, pin_memory=True, num_workers=1)
         net.eval()
         sumBpp = 0
@@ -232,7 +234,7 @@ if __name__ == "__main__":
     # save_model(model, 0)
     global train_loader
     tb_logger = SummaryWriter(os.path.join(save_path, 'events'))
-    train_data_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2'#'/data1/liujiaheng/data/compression/Flick_patch'
+    train_data_dir = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
     train_dataset = Datasets(train_data_dir, image_size)
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=batch_size,

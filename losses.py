@@ -27,7 +27,7 @@ class Contrastive_loss_pairsOnly(nn.Module):
 
 
 class Contrastive_loss(nn.Module):
-    def __init__(self, margin_neg=0.4, margin_pos=0.01):
+    def __init__(self, margin_neg=0.3, margin_pos=0.01):
         super(Contrastive_loss, self).__init__()
         self.margin_neg = margin_neg
         self.margin_pos = margin_pos
@@ -36,6 +36,7 @@ class Contrastive_loss(nn.Module):
         #distances.LpDistance()
         self.mseLoss = nn.MSELoss()
         self.l1Loss = nn.L1Loss()
+        self.hist = torch.histc()
 
     def forward(self, z1, z2):
 
@@ -62,14 +63,14 @@ class Contrastive_loss(nn.Module):
         if z2.size()[0] > 1: #avoid zero division
             similarity_lossN = similarity_lossN / (z1.size()[0]*(z2.size()[0]-1))
         #similarity_loss = similarity_lossP + similarity_lossN
-        similarity_loss = 1.5*similarity_lossP + 0.5*similarity_lossN
+        similarity_loss = 1.8*similarity_lossP + 0.2*similarity_lossN
 
         return similarity_loss
 
 
 
 class MSE_and_pairHamming_loss(nn.Module):
-    def __init__(self, eps=0.1, margin=0.01, p_one=0.45):
+    def __init__(self, eps=0.1, margin=0.0001, p_one=0.45):
         super(MSE_and_pairHamming_loss, self).__init__()
         self.eps = eps
         self.margin = margin
@@ -85,15 +86,18 @@ class MSE_and_pairHamming_loss(nn.Module):
         #pairHaaming_loss = self.L1loss(z1, z2)
         if pairHaaming_loss > self.margin:
             pairHaaming_loss = pairHaaming_loss - self.margin
+        else:
+            pairHaaming_loss = 0
+        ## half_loss = torch.mean((z1 - torch.ones_like(z1) * 0.5).pow(2)) + torch.mean((z2 - torch.ones_like(z2) * 0.5).pow(2))
         # # Make sure code is not all zeros
         # p_one = 0.5*torch.mean(z1.pow(2)) + 0.5*torch.mean(z2.pow(2))
         # p_one_loss = torch.sqrt((p_one - self.p_one).pow(2))
         # code_loss = 0.7*pairHaaming_loss + 0.3*p_one_loss
-        code_loss = pairHaaming_loss
+        code_loss = pairHaaming_loss #- 0.001*half_loss
         return reconstruction_loss + self.eps*code_loss
 
 class L1_and_pairHamming_loss(nn.Module):
-    def __init__(self, eps=1, margin=0.01, p_one=0.45):
+    def __init__(self, eps=1, margin=0.001, p_one=0.45):
         super(L1_and_pairHamming_loss, self).__init__()
         self.eps = eps
         self.margin = margin
@@ -118,7 +122,7 @@ class MSE_and_Contrastive_loss(nn.Module):
         self.eps = eps
         self.margin = margin
         self.mse = nn.MSELoss()
-        self.contrastive_loss = Contrastive_loss()
+        self.contrastive_loss = Contrastive_loss(margin_neg=10000, margin_pos=0.0001)
         self.contrastive_pair_loss = Contrastive_loss_pairsOnly()
         self.useOnlyPair = useOnlyPair
 
@@ -151,7 +155,37 @@ class L1_and_Contrastive_loss(nn.Module):
         return reconstruction_loss + self.eps*similarity_loss
 
 
+class MSE_and_blankContrastiveLoss(nn.Module):
+    def __init__(self, eps=0.1, margin=0.001, margin_neg=100):
+        super(MSE_and_blankContrastiveLoss, self).__init__()
+        self.eps = eps
+        self.margin = margin
+        self.margin_neg = margin_neg
+        self.l1Loss = nn.L1Loss()
 
+    def forward(self, outputs1, z1, outputs2, z2, input1, input2, z_blank):
+        ##reconstruction_loss = torch.mean((outputs1-input1).pow(2)) + torch.mean((outputs2-input2).pow(2))
+        reconstruction_loss = self.l1Loss(outputs1, input1) + self.l1Loss(outputs2, input2)
+        # Stereo Pair distance
+        ##code_loss = 0
+        ##pairHaaming_loss = torch.mean((z1-z2).pow(2))
+        ##pairHaaming_loss = self.l1Loss(z1, z2)
+        ##if pairHaaming_loss > self.margin:
+        ##    code_loss = pairHaaming_loss - self.margin
+        # distance from z_blank:
+        ##z_blank_dist_loss = torch.mean((z1-z_blank).pow(2)) + torch.mean((z2-z_blank).pow(2))
+        ##z_blank_dist_loss = self.l1Loss(z1, z_blank) + self.l1Loss(z2, z_blank)
+        ##if z_blank_dist_loss < self.margin_neg:
+        ##    code_loss = 0.5*code_loss + 0.5*(self.margin_neg - z_blank_dist_loss)
+
+        pairHaaming_loss = torch.nn.KLDivLoss(log_target=True)(torch.log10(z1),torch.log10(z2))+torch.nn.KLDivLoss(log_target=True)(torch.log10(z2),torch.log10(z1))
+        code_loss = pairHaaming_loss
+        ##z_blank_dist_loss = torch.nn.KLDivLoss(log_target=True)(torch.log10(z1),torch.log10(z_blank))+torch.nn.KLDivLoss(log_target=True)(torch.log10(z2),torch.log10(z_blank))
+        #code_loss = pairHaaming_loss - 0.01*z_blank_dist_loss
+        #dist_from_half = torch.mean((z1-torch.ones_like(z1)*0.5).pow(2)) + torch.mean((z2-torch.ones_like(z2)*0.5).pow(2))
+        #code_loss = pairHaaming_loss - 0.01*dist_from_half
+
+        return reconstruction_loss + self.eps*code_loss
 
 
 #####################################################################################################################

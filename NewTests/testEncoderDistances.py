@@ -6,14 +6,16 @@ from PIL import Image
 import glob
 import numpy as np
 from model_new import *
+from model import *
 
 
 #pretrained_model_path ='/home/access/dev/iclr_17_compression/checkpoints/iter_471527.pth.tar'
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/overfit - tries/32 -pairs/96*320/rec+hamm/iter_9.pth.tar'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/not-binary-try/rec + distance/iter_1300.pth.tar'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model = ImageCompressor_new(out_channel_N=256)
+#model = ImageCompressor_new(out_channel_N=256)
 #model = ImageCompressor_new()
+model = ImageCompressor()
 global_step_ignore = load_model(model, pretrained_model_path)
 net = model.to(device)
 net.eval()
@@ -21,7 +23,7 @@ net.eval()
 
 #stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
 # smaller dataset:
-stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_02'
 
 stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
 
