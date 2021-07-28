@@ -8,22 +8,27 @@ import torchvision
 from losses import *
 from model_new import *
 from model import *
+from model_fc import *
 from model_small import ImageCompressor_small
+from models.temp import Cheng2020Attention
+
+from compressai.zoo import cheng2020_attn
+
 
 
 ############## Train parameters ##############
-#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_02'
-#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
+train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 #train_folder1 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 #train_folder2 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 
-train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
-train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
+#train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
+#train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 val_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
 val_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
 
 contrast_folder = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
-batch_size = 4
+batch_size = 1
 lr_start = 1e-4
 epoch_patience = 100
 n_epochs = 25000
@@ -32,15 +37,15 @@ save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/not-binary-try/rec/iter_0_111.pth.tar'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/not-binary-try/added fc layer'
+start_from_pretrained = ''
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/rec+hamm'
 
 ################ Data transforms ################
-tsfm = transforms.Compose([transforms.Resize((384, 1216), interpolation=3), transforms.ToTensor()])
+#tsfm = transforms.Compose([transforms.Resize((384, 1216), interpolation=3), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.Resize((384, 1248), interpolation=3), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.Resize((192, 624), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.Resize((96, 320), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
-#tsfm = transforms.Compose([transforms.ToTensor()])
+tsfm = transforms.Compose([transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.RandomResizedCrop(256), transforms.RandomHorizontalFlip(),
 #                                transforms.RandomVerticalFlip(), transforms.ToTensor()])
 
@@ -53,7 +58,7 @@ if useStereoPlusDataSet:
     training_data = StereoPlusDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2,contrast_dir=contrast_folder,RandomCrop=False, transform=tsfm)
     val_data = StereoPlusDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2,contrast_dir=contrast_folder, transform=tsfm)
 else:
-    training_data = StereoDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2, randomFlip=False, RandomCrop=False, transform=tsfm)
+    training_data = StereoDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2, randomFlip=False, RandomCrop=True, transform=tsfm)
     val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm)
 
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
@@ -64,11 +69,13 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Using {} device'.format(device))
 
 # Load model:
+#net1 = cheng2020_attn(quality=4).to(device)
+
 #model = ImageCompressor_new(out_channel_N=256)
 #model = ImageCompressor_new(out_channel_N=512)
 #model = ImageCompressor_new(out_channel_N=1024)
-model = ImageCompressor()
-#model = ImageCompressor_small()
+#model = ImageCompressor()
+model = Cheng2020Attention()
 if start_from_pretrained != '':
     global_step_ignore = load_model(model, start_from_pretrained)
 model = model.to(device)
@@ -79,12 +86,11 @@ clipping_value = 5.0
 torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
 
 #criterion = MSE_and_Contrastive_loss(eps=0.01)
-criterion = MSE_and_pairHamming_loss(eps=0.5)
+criterion = MSE_and_pairHamming_loss(eps=0.1)
 #criterion = L1_and_pairHamming_loss(eps=1)
 #criterion = MSE_and_blankContrastiveLoss(eps=1, margin=0.01)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
-#optimizer = torch.optim.SGD(model.parameters(), lr=lr_start, weight_decay=1e-8, momentum=0.9)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=epoch_patience, verbose=True)
 
 # Epochs
@@ -135,12 +141,16 @@ for epoch in range(1, n_epochs + 1):
         images_cam2 = input2.to(device)
         '''
         ######### End Temp patch
-
-        outputs_cam1, z_binary1, z_cam1 = model(images_cam1)
-        outputs_cam2, z_binary2, z_cam2 = model(images_cam2)
-        if hammingLossOnBinaryZ:
-            z_cam1 = z_binary1
-            z_cam2 = z_binary2
+        #a = net1(images_cam1)
+        using_new_net = True
+        if using_new_net:
+            mse_1, mse_2 = model(images_cam1, images_cam2)
+        else:
+            outputs_cam1, z_binary1, z_cam1 = model(images_cam1)
+            outputs_cam2, z_binary2, z_cam2 = model(images_cam2)
+            if hammingLossOnBinaryZ:
+                z_cam1 = z_binary1
+                z_cam2 = z_binary2
 
         if using_blank_loss:
             if epoch%2 == 0:
@@ -158,7 +168,8 @@ for epoch in range(1, n_epochs + 1):
                 out_im, z_blank_im, _ = model(blank_im)
                 loss = criterion(outputs_cam1, z_cam1, outputs_cam2, z_cam2, images_cam1, images_cam2, z_blank_im)
         else:
-            loss = criterion(outputs_cam1, z_cam1, outputs_cam2, z_cam2, images_cam1, images_cam2)
+            loss = mse_1 + mse_2
+            #loss = criterion(outputs_cam1, z_cam1, outputs_cam2, z_cam2, images_cam1, images_cam2)
             #loss = criterion(outputs_cam1, images_cam1) + criterion(outputs_cam2, images_cam2)
         loss.backward()
         optimizer.step()

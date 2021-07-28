@@ -15,7 +15,7 @@ from model import *
 
 
 # pretrained_model_path ='/home/access/dev/iclr_17_compression/checkpoints/iter_471527.pth.tar'
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/Mnually shift networks/33 pixel stereo shift/iter_0_111_05.pth.tar'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/N=1024/rec+hamm/iter_1.pth.tar'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = ImageCompressor_new(out_channel_N=1024)
@@ -27,8 +27,8 @@ global_step_ignore = load_model(model, pretrained_model_path)
 net = model.to(device)
 net.eval()
 
-#stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
-stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
+#stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_02'
 #stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/diff_image_2'
 
 stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
@@ -85,6 +85,36 @@ if calc_var:
             var_code = np.abs(encoded.cpu().detach().numpy()-avg_code)
         else:
             var_code += np.abs(encoded.cpu().detach().numpy()-avg_code)
+
+
+    calc_comp_ratio = True
+    if calc_comp_ratio:
+        import gzip
+        print('calculating compression ratio of used bits')
+
+
+
+        for i in range(len(stereo1_path_list)):
+            image = Image.open(stereo1_path_list[i])
+            tensor_image = data_transforms(image)
+            # cut image H*W to be a multiple of 16
+            shape = tensor_image.size()
+            tensor_image = tensor_image[:, :16 * (shape[1] // 16), :16 * (shape[2] // 16)]
+            input1 = tensor_image[None, ...].to(device)
+            # Encode image:
+            outputs_cam, encoded, _ = net(input1)
+            code = torch.squeeze(encoded.cpu()).detach().numpy()#.flatten()
+            code_active = code[test_unchained_bits[0,:,:,:]==0]  #take only the active bits
+            code = code.flatten()
+            code_active = code_active.flatten()
+            zip_compression_factor = code.size / (gzip.compress(np.packbits(code == 0)).__sizeof__() * 8)
+            zip_compression_factor_active_bits = code_active.size / (gzip.compress(np.packbits(code_active == 0)).__sizeof__() * 8)
+            print(zip_compression_factor, zip_compression_factor_active_bits)
+
+
+
+
+
 
     var_code = var_code / len(stereo1_path_list)
     var_hist = np.mean(var_code[0,:,:,:], axis=(1, 2))

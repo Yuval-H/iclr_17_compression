@@ -8,29 +8,31 @@ import glob
 import numpy as np
 from model import *
 from model_new import *
-from model_small import ImageCompressor_small
+from model_fc import *
+from models.temp import Cheng2020Attention
 import gzip
 
 
 #pretrained_model_path ='/home/access/dev/iclr_17_compression/checkpoints_new/small image factor2/full-loss _ from pretrained/iter_240.pth.tar'
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/N=1024/rec+hamm/iter_1.pth.tar'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/rec+hamm/iter_1.pth.tar'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = ImageCompressor_new()
 #model = ImageCompressor_new(out_channel_N=512)
 #model = ImageCompressor_new(out_channel_N=256)
-model = ImageCompressor_new(out_channel_N=1024)
-#model = ImageCompressor_small()
+#model = ImageCompressor_new(out_channel_N=1024)
+#model = ImageCompressor_fc()
 #model = ImageCompressor()
+model = Cheng2020Attention()
 global_step_ignore = load_model(model, pretrained_model_path)
 net = model.to(device)
 net.eval()
 
 
-stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
+#stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
 #stereo1_dir = '/home/access/dev/data_sets/kitti/upsample - try/original'
 # smaller dataset:
-#stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
 # CLIC2021:
 #stereo1_dir = '/home/access/dev/data_sets/CLIC2021/professional_test_2021'
 #stereo1_dir = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
@@ -43,9 +45,9 @@ stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
 # transforms to fit model size
 #data_transforms = transforms.Compose([transforms.Resize((384, 1248), interpolation=3), transforms.ToTensor()])
 #data_transforms = transforms.Compose([transforms.Resize((192, 624), interpolation=3), transforms.ToTensor()])
-#data_transforms = transforms.Compose([transforms.Resize((96, 320), interpolation=3), transforms.ToTensor()])
 #data_transforms = transforms.Compose([transforms.CenterCrop((384, 1248)), transforms.ToTensor()])
 data_transforms = transforms.Compose([transforms.ToTensor()])
+#data_transforms = transforms.Compose([transforms.CenterCrop(256), transforms.ToTensor()])
 #transforms.Pad((1120,1120))
 
 
@@ -68,7 +70,11 @@ for i in range(len(stereo1_path_list)):
     shape = tensor_image1.size()
     tensor_image1 = tensor_image1[:, :16 * (shape[1] // 16), :16 * (shape[2] // 16)]
     input1 = tensor_image1[None, ...].to(device)
-    clipped_recon_image, encoded, _ = net(input1)
+    use_new_net = True
+    if use_new_net:
+        clipped_recon_image, encoded = net(input1)
+    else:
+        clipped_recon_image, encoded, _ = net(input1)
     # Calc zip ciompression factor
     e1 = torch.squeeze(encoded.cpu()).detach().numpy().flatten()
     zip_compression_factor = e1.size / (gzip.compress(np.packbits(e1 == 0)).__sizeof__() * 8)
@@ -121,7 +127,11 @@ if plot_best_and_worst:
     tensor_image1 = tensor_image1[:, :16 * (shape[1] // 16), :16 * (shape[2] // 16)]
     input1 = tensor_image1[None, ...].to(device)
     ##
-    clipped_recon_image, _, _ = net(input1)
+
+    if use_new_net:
+        clipped_recon_image, encoded = net(input1)
+    else:
+        clipped_recon_image, encoded, _ = net(input1)
     img1_minDist_input = tensor_image1.permute(1, 2, 0).detach().numpy()
     #img1_minDist_input = img1_minDist_input * 0.5 + 0.5
 
@@ -137,7 +147,10 @@ if plot_best_and_worst:
     tensor_image1 = tensor_image1[:, :16 * (shape[1] // 16), :16 * (shape[2] // 16)]
     ##
     input1 = tensor_image1[None, ...].to(device)
-    clipped_recon_image, _, _ = net(input1)
+    if use_new_net:
+        clipped_recon_image, encoded = net(input1)
+    else:
+        clipped_recon_image, encoded, _ = net(input1)
     img1_maxDist_input = tensor_image1.permute(1, 2, 0).detach().numpy()
     tensor_output_image = torch.squeeze(clipped_recon_image).permute(1, 2, 0)
     img1_maxDist_output = tensor_output_image.cpu().detach().numpy()

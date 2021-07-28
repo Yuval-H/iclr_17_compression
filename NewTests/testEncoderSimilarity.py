@@ -8,14 +8,17 @@ import numpy as np
 from model_new import *
 from model import *
 from model_small import ImageCompressor_small
+from models.temp import Cheng2020Attention
+
 from utils.Conditional_Entropy import compute_conditional_entropy
 
 
 #pretrained_model_path ='/home/access/dev/iclr_17_compression/checkpoints/iter_471527.pth.tar'
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/N=1024/rec+hamm/iter_1.pth.tar'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/rec/iter_1.pth.tar'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model = ImageCompressor_new(out_channel_N=1024)
+model = Cheng2020Attention()
+#model = ImageCompressor_new(out_channel_N=1024)
 #model = ImageCompressor_new(out_channel_N=256)
 #model = ImageCompressor_new(out_channel_N=512)
 #model = ImageCompressor_new()
@@ -84,7 +87,7 @@ for i in range(len(stereo1_path_list)):
     '''
 
     # Use center crop, shifted 33 pixel ~ vertical alignment
-    #'''
+    '''
     input1 = input1[:, :, :, 33:]
     input2 = input2[:, :, :, :-33]
     # cut image H*W to be a multiple of 16
@@ -93,12 +96,29 @@ for i in range(len(stereo1_path_list)):
     input2 = input2[:, :, :16 * (shape[2] // 16), :16 * (shape[3] // 16)]
     input1 = input1.to(device)
     input2 = input2.to(device)
-    #'''
+    '''
     ######### End Temp patch
-
     # Encoded images:
-    outputs_cam1, encoded, _ = net(input1)
-    outputs_cam2, encoded2, _ = net(input2)
+    use_new_net = True
+    if use_new_net:
+        outputs_cam1, encoded = net(input1)
+        outputs_cam2, encoded2 = net(input2)
+    else:
+        outputs_cam1, encoded, _ = net(input1)
+        outputs_cam2, encoded2, _ = net(input2)
+
+    save_channels_images = True
+    if save_channels_images:
+        save_path = '/home/access/dev/data_sets/image_z_crops/new_net/'
+        e1 = encoded[0, :, :, :]
+        e2 = encoded2[0, :, :, :]
+        for i_c in range(len(e1)):
+            im1 = e1[i_c, :, :]
+            im2 = e2[i_c, :, :]
+            cat = torch.cat((im1, im2), 0).cpu().detach().numpy()
+            cat = (cat - cat.min()) / (cat.max() - cat.min())
+            image = Image.fromarray((cat * 255).astype(np.uint8))
+            image.save(save_path + f"{i_c:04d}.png")
 
     '''
     c1 = torch.squeeze(encoded.cpu()).detach().numpy()
