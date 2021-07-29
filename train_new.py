@@ -38,7 +38,7 @@ using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
 start_from_pretrained = ''
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/rec+hamm'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/using_net_on_final_rec'
 
 ################ Data transforms ################
 #tsfm = transforms.Compose([transforms.Resize((384, 1216), interpolation=3), transforms.ToTensor()])
