@@ -114,7 +114,7 @@ class StereoDataset(Dataset):
             img_stereo2 = self.transform(img_stereo2)
 
         if self.RandomCrop:
-            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(256, 256))
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
 

@@ -3,6 +3,7 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 import os
 from PIL import Image
+import PIL
 import glob
 import numpy as np
 from model_new import *
@@ -14,7 +15,7 @@ import gzip
 from utils.Conditional_Entropy import compute_conditional_entropy
 
 
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/using_net_on_final_rec/iter_1.pth.tar'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/using 22 nets on latent/try_L1/iter_111.pth.tar'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = Cheng2020Attention()
@@ -30,11 +31,15 @@ net.eval()
 stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
 stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
+# CLIC view test:
+#stereo1_dir = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/im3'
+#stereo2_dir = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/im2'
+
 stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
 
 
 
-#transform = transforms.Compose([transforms.Resize((384, 1216),interpolation=3), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.Resize((192, 624), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
 transform = transforms.Compose([transforms.ToTensor()])
 
@@ -71,7 +76,7 @@ for i in range(len(stereo1_path_list)):
     tensor_output_image = torch.squeeze(final_im1_recon).permute(1, 2, 0)
     numpy_output_image = tensor_output_image.cpu().detach().numpy()
     l1 = np.mean(np.abs(numpy_input_image - numpy_output_image))
-    mse = np.mean(np.square(numpy_input_image - numpy_output_image))  # * 255**2
+    mse = np.mean(np.square(numpy_input_image - numpy_output_image))  # * 255**2   #mse_loss.item()/2
     msssim = ms_ssim(final_im1_recon.cpu().detach(), input1.cpu(), data_range=1.0, size_average=True)
 
     e1 = torch.squeeze(z1_down.cpu()).detach().numpy().flatten()
@@ -122,7 +127,7 @@ if plot_best_and_worst:
     input1 = in1[None, ...].to(device)
     input2 = in2[None, ...].to(device)
     # Encoded images:
-    mse_loss, mse_on_full, final_im1_recon, z1_down = model(input1, input2)
+    _, mse, final_im1_recon, _ = model(input1, input2)
     img1_minDist_rec = torch.squeeze(final_im1_recon).permute(1, 2, 0).cpu().detach().numpy()
 
 
@@ -138,19 +143,20 @@ if plot_best_and_worst:
     input1 = in1[None, ...].to(device)
     input2 = in2[None, ...].to(device)
     # Encoded images:
-    mse_loss, mse_on_full, final_im1_recon, z1_down = model(input1, input2)
+    _, mse, final_im1_recon, _ = model(input1, input2)
     img1_maxDist_rec = torch.squeeze(final_im1_recon).permute(1, 2, 0).cpu().detach().numpy()
+    #img1_maxDist_rec = img1_maxDist
     ##
     print('the worst image is',stereo1_path_list[max_idx])
 
 
-    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig, (ax1, ax2) = plt.subplots(2, 1)
     fig.suptitle('Best Hamming distance,')
     ax1.imshow(img1_minDist)
     ax2.imshow(img1_minDist_rec)
     fig.tight_layout()
 
-    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig, (ax1, ax2) = plt.subplots(2, 1)
     fig.suptitle('Worst Hamming distance,')
     ax1.imshow(img1_maxDist)
     ax2.imshow(img1_maxDist_rec)

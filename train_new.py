@@ -17,8 +17,8 @@ from compressai.zoo import cheng2020_attn
 
 
 ############## Train parameters ##############
-train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
+train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_02'
+train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
 #train_folder1 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 #train_folder2 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 
@@ -37,8 +37,8 @@ save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = ''
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/using_net_on_final_rec'
+start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/using 22 nets on latent/try_L1/iter_11.pth.tar'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/overfit_8_trys/L1/loss1_rec1+final+Zx'
 
 ################ Data transforms ################
 #tsfm = transforms.Compose([transforms.Resize((384, 1216), interpolation=3), transforms.ToTensor()])
@@ -86,7 +86,7 @@ clipping_value = 5.0
 torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
 
 #criterion = MSE_and_Contrastive_loss(eps=0.01)
-criterion = MSE_and_pairHamming_loss(eps=0.1)
+#criterion = MSE_and_pairHamming_loss(eps=0.1)
 #criterion = L1_and_pairHamming_loss(eps=1)
 #criterion = MSE_and_blankContrastiveLoss(eps=1, margin=0.01)
 
@@ -100,6 +100,7 @@ for epoch in range(1, n_epochs + 1):
     train_loss = 0.0
 
     # Training
+    M = 32
     epoch_start_time = time.time()
     for batch, data in enumerate(train_dataloader):
         if useStereoPlusDataSet:
@@ -109,6 +110,11 @@ for epoch in range(1, n_epochs + 1):
             image_contrast = image_contrast.to(device)
         else:
             images_cam1, images_cam2 = data
+
+            shape = images_cam1.size()
+            images_cam1 = images_cam1[:, :, :M * (shape[2] // M), :M * (shape[3] // M)]
+            images_cam2 = images_cam2[:, :, :M * (shape[2] // M), :M * (shape[3] // M)]
+
             images_cam1 = images_cam1.to(device)
             images_cam2 = images_cam2.to(device)
 
@@ -144,7 +150,7 @@ for epoch in range(1, n_epochs + 1):
         #a = net1(images_cam1)
         using_new_net = True
         if using_new_net:
-            mse_1, mse_2 = model(images_cam1, images_cam2)
+            mse_1, mse_2, mse_z = model(images_cam1, images_cam2)
         else:
             outputs_cam1, z_binary1, z_cam1 = model(images_cam1)
             outputs_cam2, z_binary2, z_cam2 = model(images_cam2)
@@ -168,7 +174,7 @@ for epoch in range(1, n_epochs + 1):
                 out_im, z_blank_im, _ = model(blank_im)
                 loss = criterion(outputs_cam1, z_cam1, outputs_cam2, z_cam2, images_cam1, images_cam2, z_blank_im)
         else:
-            loss = mse_1 + mse_2
+            loss = mse_1 + mse_2 + 0.5*mse_z
             #loss = criterion(outputs_cam1, z_cam1, outputs_cam2, z_cam2, images_cam1, images_cam2)
             #loss = criterion(outputs_cam1, images_cam1) + criterion(outputs_cam2, images_cam2)
         loss.backward()

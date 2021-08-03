@@ -97,7 +97,7 @@ class Cheng2020Anchor(JointAutoregressiveHierarchicalPriors):
         return net
 
 
-class Cheng2020Attention(Cheng2020Anchor):
+class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
     """Self-attention model variant from `"Learned Image Compression with
     Discretized Gaussian Mixture Likelihoods and Attention Modules"
     <https://arxiv.org/abs/2001.01568>`_, by Zhengxue Cheng, Heming Sun, Masaru
@@ -112,18 +112,20 @@ class Cheng2020Attention(Cheng2020Anchor):
     """
 
     def __init__(self, N=128, **kwargs):
-        super().__init__(N=N, **kwargs)
+        #super().__init__(N=N, **kwargs)
+        super().__init__()
 
-        self.use_another_net_on_recon = True
+        self.use_another_net_on_recon = False
         self.out_channel_N = N
         self.g_a = nn.Sequential(
-            #ResidualBlock(3, 3),                        ## YH patch : remove to use the pretrained weights
+            ResidualBlock(3, 3),                        ## YH patch : remove to use the pretrained weights
             ResidualBlockWithStride(3, N, stride=2),
             ResidualBlock(N, N),
             ResidualBlockWithStride(N, N, stride=2),
             AttentionBlock(N),
             ResidualBlock(N, N),
             ResidualBlockWithStride(N, N, stride=2),
+            #AttentionBlock(N),   ### added
             ResidualBlock(N, N),
             conv3x3(N, N, stride=2),
             AttentionBlock(N),
@@ -133,17 +135,20 @@ class Cheng2020Attention(Cheng2020Anchor):
             AttentionBlock(N),
             ResidualBlock(N, N),
             ResidualBlockUpsample(N, N, 2),
+            #AttentionBlock(N), ### added
             ResidualBlock(N, N),
             ResidualBlockUpsample(N, N, 2),
             AttentionBlock(N),
             ResidualBlock(N, N),
             ResidualBlockUpsample(N, N, 2),
+            #AttentionBlock(N),  ### added
             ResidualBlock(N, N),
             subpel_conv3x3(N, 3, 2),
         )
 
         self.g_a2 = nn.Sequential(
             ResidualBlockWithStride(128, 128, stride=2),
+            #AttentionBlock(128),  ### added
             ResidualBlock(128, 128),
             ResidualBlockWithStride(128, 64, stride=2),
             AttentionBlock(64),
@@ -153,10 +158,12 @@ class Cheng2020Attention(Cheng2020Anchor):
         )
         self.g_a22 = nn.Sequential(
             conv3x3(128, 64, stride=1),
+            #AttentionBlock(64),  ### added
             ResidualBlock(64, 64),
             ResidualBlockWithStride(64, 64, stride=2),
             AttentionBlock(64),
             conv3x3(64, 32, stride=1),
+            #AttentionBlock(32),  ### added
             ResidualBlock(32, 32),
             conv3x3(32, 8, stride=1),
             AttentionBlock(8),
@@ -167,9 +174,11 @@ class Cheng2020Attention(Cheng2020Anchor):
             conv3x3(8, 32, stride=1),
             ResidualBlock(32, 32),
             conv3x3(32, 64, stride=1),
+            #AttentionBlock(64),  ### added
             ResidualBlock(64, 64),
-            AttentionBlock(64),
+            #AttentionBlock(64),
             ResidualBlockUpsample(64, 128, 2),
+            #AttentionBlock(128),  ### added
             ResidualBlock(128, 128),
         )
 
@@ -187,17 +196,21 @@ class Cheng2020Attention(Cheng2020Anchor):
         self.g_z1hat_z2 = nn.Sequential(
             AttentionBlock(256),
             ResidualBlock(256, 256),
+            #AttentionBlock(256),  ### added
             ResidualBlock(256, 128),
             AttentionBlock(128),
             ResidualBlock(128, 128),
+            #AttentionBlock(128),  ### added
         )
 
         self.g_rec1_im2 = nn.Sequential(
             AttentionBlock(6),
             ResidualBlock(6, 6),
+            AttentionBlock(6),  ### added
             ResidualBlock(6, 3),
             AttentionBlock(3),
             ResidualBlock(3, 3),
+            AttentionBlock(3),  ### added
         )
 
     def forward(self, im1, im2):
@@ -228,6 +241,7 @@ class Cheng2020Attention(Cheng2020Anchor):
 
         # cat z1_hat, z2 -> get z1_hat_hat
         z_cat = torch.cat((z1_hat, z2), 1)
+        #z_cat = torch.cat((torch.zeros_like(z1_hat), z2), 1)
         #z_cat = torch.cat((z1_hat, torch.zeros_like(z2)), 1)
         z1_hat_hat = self.g_z1hat_z2(z_cat)
 
@@ -242,11 +256,21 @@ class Cheng2020Attention(Cheng2020Anchor):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        mse_loss = 0.5*torch.mean((im1_hat.clamp(0., 1.) - im1).pow(2)) \
-                   + 0.5*torch.mean((im2_hat.clamp(0., 1.) - im2).pow(2))
-        mse_on_full = torch.mean((final_im1_recon.clamp(0., 1.) - im1).pow(2))
+        useL1 = True
+        if useL1:
+            #loss = torch.mean(torch.sqrt((diff * diff)
+            loss_l1 = nn.L1Loss()
+
+            mse_loss = 0.5 * loss_l1(im1_hat.clamp(0., 1.), im1) + 0.5 * loss_l1(im2_hat.clamp(0., 1.), im2)
+            mse_on_z = loss_l1(z1_hat_hat, z1)
+            mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
+        else:
+            mse_loss = 0.5*torch.mean((im1_hat.clamp(0., 1.) - im1).pow(2)) \
+                       + 0.5*torch.mean((im2_hat.clamp(0., 1.) - im2).pow(2))
+            mse_on_z = torch.mean((z1_hat_hat - z1).pow(2))
+            mse_on_full = torch.mean((final_im1_recon.clamp(0., 1.) - im1).pow(2))
 
         if self.training:
-            return mse_loss, mse_on_full
+            return mse_loss, mse_on_full, mse_on_z
         else:
             return mse_loss, mse_on_full, torch.clip(final_im1_recon, 0, 1), z1_down
