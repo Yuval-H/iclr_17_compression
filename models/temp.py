@@ -24,6 +24,8 @@ from compressai.layers import (
     subpel_conv3x3,
 )
 
+from compressai.entropy_models import EntropyBottleneck, EntropyModel
+
 from compressai.models.priors import JointAutoregressiveHierarchicalPriors
 
 
@@ -146,16 +148,6 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
             subpel_conv3x3(N, 3, 2),
         )
 
-        self.g_a2 = nn.Sequential(
-            ResidualBlockWithStride(128, 128, stride=2),
-            #AttentionBlock(128),  ### added
-            ResidualBlock(128, 128),
-            ResidualBlockWithStride(128, 64, stride=2),
-            AttentionBlock(64),
-            ResidualBlock(64, 64),
-            conv3x3(64, 32, stride=2),
-            AttentionBlock(32),
-        )
         self.g_a22 = nn.Sequential(
             conv3x3(128, 64, stride=1),
             #AttentionBlock(64),  ### added
@@ -182,17 +174,6 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
             ResidualBlock(128, 128),
         )
 
-        self.g_s2 = nn.Sequential(
-            AttentionBlock(32),
-            ResidualBlock(32, 32),
-            ResidualBlockUpsample(32, 64, 2),
-            ResidualBlock(64, 64),
-            ResidualBlockUpsample(64, 128, 2),
-            AttentionBlock(128),
-            ResidualBlock(128, 128),
-            subpel_conv3x3(128, 128, 2),
-        )
-
         self.g_z1hat_z2 = nn.Sequential(
             AttentionBlock(256),
             ResidualBlock(256, 256),
@@ -208,9 +189,18 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
             ResidualBlock(6, 6),
             AttentionBlock(6),  ### added
             ResidualBlock(6, 3),
+            ##ResidualBlock(3, 3),
             AttentionBlock(3),
             ResidualBlock(3, 3),
             AttentionBlock(3),  ### added
+        )
+
+        self.g_rec1_im2_new = nn.Sequential(
+            AttentionBlock(6),
+            ResidualBlock(6, 3),
+            ResidualBlock(3, 3),
+            AttentionBlock(3),
+            ResidualBlock(3, 3),
         )
 
     def forward(self, im1, im2):
@@ -248,9 +238,11 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         # recon images
         final_im1_recon = self.g_s(z1_hat_hat)
 
+
         if self.use_another_net_on_recon:
+            # Note: adding the net results as a residual to the reconstructed image.
             cat_rec_and_im2 = torch.cat((final_im1_recon, im2), 1)
-            final_im1_recon = self.g_rec1_im2(cat_rec_and_im2)
+            final_im1_recon = final_im1_recon + self.g_rec1_im2_new(cat_rec_and_im2)
 
         im1_hat = self.g_s(compressed_z1)
         im2_hat = self.g_s(compressed_z2)

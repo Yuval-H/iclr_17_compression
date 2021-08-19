@@ -79,7 +79,7 @@ class TestKodakDataset(Dataset):
 
 class StereoDataset(Dataset):
     """Stereo Image Pairs dataset."""
-    def __init__(self, stereo1_dir, stereo2_dir, randomFlip=False, RandomCrop=False, transform=transforms.ToTensor()):
+    def __init__(self, stereo1_dir, stereo2_dir, randomFlip=False, RandomCrop=False, crop_352_1216=False, transform=transforms.ToTensor()):
         """
         Args:
             stereo1_dir (string): Directory with all the images.
@@ -94,6 +94,7 @@ class StereoDataset(Dataset):
         self.transform = transform
         self.randomFlip = randomFlip
         self.RandomCrop = RandomCrop
+        self.crop_352_1216 = crop_352_1216
 
     def __len__(self):
         return len(self.stereo1_path_list)
@@ -114,9 +115,16 @@ class StereoDataset(Dataset):
             img_stereo2 = self.transform(img_stereo2)
 
         if self.RandomCrop:
-            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(352, 1216))
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(370, 740))
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
+
+            # temp patch: resize to fit Stereo paper dataset
+            tsfm = transforms.Compose([transforms.Resize((128, 256))])
+            img_stereo1 = tsfm(img_stereo1)
+            img_stereo2 = tsfm(img_stereo2)
 
         if self.randomFlip:
             # convert to numpy, do augmentation, convert back to tensor
@@ -125,6 +133,11 @@ class StereoDataset(Dataset):
             img_stereo1, img_stereo2 = randFlipStereoImage(im1_np, im2_np)
             img_stereo1 = torch.tensor(img_stereo1.copy()).permute(2, 0, 1)
             img_stereo2 = torch.tensor(img_stereo2.copy()).permute(2, 0, 1)
+
+        if self.crop_352_1216:
+            # cut to the same size:
+            img_stereo1 = img_stereo1[:, :352, :1216]
+            img_stereo2 = img_stereo2[:, :352, :1216]
 
 
         return img_stereo1, img_stereo2

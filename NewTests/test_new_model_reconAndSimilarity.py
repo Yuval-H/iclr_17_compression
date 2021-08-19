@@ -10,26 +10,36 @@ from model_new import *
 from model import *
 from model_small import ImageCompressor_small
 from models.temp import Cheng2020Attention
+from models.original_att import Cheng2020Attention_2
+from models.classic_DSC_model import classic_DSC_model
 import gzip
 
 from utils.Conditional_Entropy import compute_conditional_entropy
 
-
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/using 22 nets on latent/try_L1/iter_111.pth.tar'
+load_model_new_way = True
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/N=256 try/model_best_weights_bigdata_cebtercrop_notFully.pth'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model = Cheng2020Attention()
-global_step_ignore = load_model(model, pretrained_model_path)
+#model = Cheng2020Attention()
+model = Cheng2020Attention_2()
+#model = classic_DSC_model()
+
+if load_model_new_way:
+    checkpoint = torch.load(pretrained_model_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+else:
+    global_step_ignore = load_model(model, pretrained_model_path)
 net = model.to(device)
 net.eval()
 
-
-#stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
-#stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
+stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
+stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
+#stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
+#stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 
 # smaller dataset:
-stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
+#stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+#stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
 # CLIC view test:
 #stereo1_dir = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/im3'
@@ -39,9 +49,12 @@ stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
 
 
 
-#transform = transforms.Compose([transforms.Resize((192, 624), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((192, 608)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
-transform = transforms.Compose([transforms.ToTensor()])
+transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.ToTensor()])
+
 
 
 avg_bpp = 0
@@ -77,7 +90,7 @@ for i in range(len(stereo1_path_list)):
     numpy_output_image = tensor_output_image.cpu().detach().numpy()
     l1 = np.mean(np.abs(numpy_input_image - numpy_output_image))
     mse = np.mean(np.square(numpy_input_image - numpy_output_image))  # * 255**2   #mse_loss.item()/2
-    msssim = ms_ssim(final_im1_recon.cpu().detach(), input1.cpu(), data_range=1.0, size_average=True)
+    msssim = 1#ms_ssim(final_im1_recon.cpu().detach(), input1.cpu(), data_range=1.0, size_average=True)
 
     e1 = torch.squeeze(z1_down.cpu()).detach().numpy().flatten()
     n_bits = gzip.compress(e1).__sizeof__() * 8
@@ -151,13 +164,13 @@ if plot_best_and_worst:
 
 
     fig, (ax1, ax2) = plt.subplots(2, 1)
-    fig.suptitle('Best Hamming distance,')
+    fig.suptitle('Best MSE reconstruction,')
     ax1.imshow(img1_minDist)
     ax2.imshow(img1_minDist_rec)
     fig.tight_layout()
 
     fig, (ax1, ax2) = plt.subplots(2, 1)
-    fig.suptitle('Worst Hamming distance,')
+    fig.suptitle('Worst MSE reconstruction,')
     ax1.imshow(img1_maxDist)
     ax2.imshow(img1_maxDist_rec)
     fig.tight_layout()

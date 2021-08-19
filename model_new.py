@@ -28,7 +28,7 @@ def load_model(model, f):
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
     f = str(f)
-    if f.find('iter_') != -1 and f.find('.pth') != -1:
+    if 0:#f.find('iter_') != -1 and f.find('.pth') != -1:
         st = f.find('iter_') + 5
         ed = f.find('.pth', st)
         return int(f[st:ed])
