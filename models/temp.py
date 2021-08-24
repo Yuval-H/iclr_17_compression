@@ -117,7 +117,7 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         #super().__init__(N=N, **kwargs)
         super().__init__()
 
-        self.use_another_net_on_recon = False
+        self.use_another_net_on_recon = True
         self.out_channel_N = N
         self.g_a = nn.Sequential(
             ResidualBlock(3, 3),                        ## YH patch : remove to use the pretrained weights
@@ -168,6 +168,7 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
             conv3x3(32, 64, stride=1),
             #AttentionBlock(64),  ### added
             ResidualBlock(64, 64),
+            ########ResidualBlock(64, 128),
             #AttentionBlock(64),
             ResidualBlockUpsample(64, 128, 2),
             #AttentionBlock(128),  ### added
@@ -177,13 +178,20 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         self.g_z1hat_z2 = nn.Sequential(
             AttentionBlock(256),
             ResidualBlock(256, 256),
-            #AttentionBlock(256),  ### added
             ResidualBlock(256, 128),
             AttentionBlock(128),
             ResidualBlock(128, 128),
-            #AttentionBlock(128),  ### added
         )
-
+        '''
+        self.g_z1hat_z2_tryExpand = nn.Sequential(
+            AttentionBlock(256),
+            ResidualBlock(256, 512),
+            AttentionBlock(512),
+            ResidualBlock(512, 128),
+            ResidualBlock(128, 128),
+            AttentionBlock(128),
+        )
+        '''
         self.g_rec1_im2 = nn.Sequential(
             AttentionBlock(6),
             ResidualBlock(6, 6),
@@ -208,8 +216,9 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
                                           im1.size(3) // 16).cuda()
         quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -0.5, 0.5)
 
-        quant_noise_feature2 = torch.zeros(im1.size(0), 8, im1.size(2) // 32,
-                                          im1.size(3) // 32).cuda()
+        channels = 8 # change back to 8 when done with exp
+        quant_noise_feature2 = torch.zeros(im1.size(0), channels, im1.size(2) // 32, im1.size(3) // 32).cuda()
+        #quant_noise_feature2 = torch.zeros(im1.size(0), 8, im1.size(2) // 16, im1.size(3) // 16).cuda()
         quant_noise_feature2 = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature2), -0.5, 0.5)
 
         z1 = self.g_a(im1)
@@ -233,7 +242,11 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         z_cat = torch.cat((z1_hat, z2), 1)
         #z_cat = torch.cat((torch.zeros_like(z1_hat), z2), 1)
         #z_cat = torch.cat((z1_hat, torch.zeros_like(z2)), 1)
-        z1_hat_hat = self.g_z1hat_z2(z_cat)
+        try_expanded_G_Z = False
+        if try_expanded_G_Z:
+            z1_hat_hat = self.g_z1hat_z2_tryExpand(z_cat)
+        else:
+            z1_hat_hat = self.g_z1hat_z2(z_cat)
 
         # recon images
         final_im1_recon = self.g_s(z1_hat_hat)
@@ -257,8 +270,7 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
             mse_on_z = loss_l1(z1_hat_hat, z1)
             mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
         else:
-            mse_loss = 0.5*torch.mean((im1_hat.clamp(0., 1.) - im1).pow(2)) \
-                       + 0.5*torch.mean((im2_hat.clamp(0., 1.) - im2).pow(2))
+            mse_loss = 0.5*torch.mean((im1_hat.clamp(0., 1.) - im1).pow(2)) + 0.5*torch.mean((im2_hat.clamp(0., 1.) - im2).pow(2))
             mse_on_z = torch.mean((z1_hat_hat - z1).pow(2))
             mse_on_full = torch.mean((final_im1_recon.clamp(0., 1.) - im1).pow(2))
 

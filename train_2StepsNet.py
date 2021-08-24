@@ -16,8 +16,8 @@ from compressai.zoo import cheng2020_attn
 
 
 ############## Train parameters ##############
-#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
+#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_02'
+#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
 #train_folder1 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 #train_folder2 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 #train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/training/image_2'
@@ -32,15 +32,15 @@ val_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train
 
 batch_size = 4
 lr_start = 1e-4
-epoch_patience = 20
+epoch_patience = 25
 n_epochs = 25000
-val_every = 1
+val_every = 25000
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/N=256 try/model_best_weights_32pairs_loss2_notFully.pth'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/N=256 try'
+start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/model_best_weights?_23.6psnrOnTest.pth'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/try_train_final_image-image_layer'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -67,8 +67,8 @@ print('Using {} device'.format(device))
 
 # Load model:
 #net1 = cheng2020_attn(quality=4).to(device)
-#model = Cheng2020Attention()
-model = Cheng2020Attention_2()
+model = Cheng2020Attention()
+#model = Cheng2020Attention_2()
 #model = classic_DSC_model()
 model = model.to(device)
 
@@ -88,7 +88,7 @@ if start_from_pretrained != '':
     global_step_ignore = load_model(model, start_from_pretrained)
     '''
 model.train()
-'''
+#'''
 freez2_base_autoencoder = False
 if freez2_base_autoencoder:
     for param in model.g_a.parameters():
@@ -101,7 +101,7 @@ if freez2_base_autoencoder:
         param.requires_grad = False
     for param in model.g_z1hat_z2.parameters():
         param.requires_grad = False
-'''
+#'''
 
 
 # todo: check with & without
@@ -133,8 +133,9 @@ for epoch in range(epoch_start, n_epochs + 1):
 
         mse_1, mse_2, mse_z = model(images_cam1, images_cam2)
 
-        #loss = mse_2    #only final rec loss
-        loss = mse_1 + mse_2   #final and backbone rec loss
+        loss = mse_2    #only final rec loss
+        #loss = mse_1 + mse_2   #final and backbone rec loss
+        #loss = mse_1 # only base loss
         #loss = mse_1 + mse_2 + 0.5*mse_z
         #loss = mse_2 + 0.5 * mse_z
         loss.backward()
@@ -143,7 +144,7 @@ for epoch in range(epoch_start, n_epochs + 1):
 
     train_loss = train_loss / len(train_dataloader)
     # Note that step should be called after validate()
-    #scheduler.step(train_loss)
+    scheduler.step(train_loss)
     if train_loss < best_loss:
         best_loss = train_loss
 
@@ -154,7 +155,6 @@ for epoch in range(epoch_start, n_epochs + 1):
             'scheduler_state_dict': scheduler.state_dict(),
             'loss': train_loss,
         }, save_path+'/model_best_weights.pth')
-
         #save_model(model, 1, save_path) #save_model(model, epoch, save_path)
     elif epoch % save_every == 0:
         #save_model(model, epoch, save_path)

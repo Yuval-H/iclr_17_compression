@@ -17,11 +17,11 @@ import gzip
 from utils.Conditional_Entropy import compute_conditional_entropy
 
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/N=256 try/model_best_weights_bigdata_cebtercrop_notFully.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/try_train_final_image-image_layer/model_best_weights.pth'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#model = Cheng2020Attention()
-model = Cheng2020Attention_2()
+model = Cheng2020Attention()
+#model = Cheng2020Attention_2()
 #model = classic_DSC_model()
 
 if load_model_new_way:
@@ -59,6 +59,7 @@ transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Res
 
 avg_bpp = 0
 avg_mse = 0
+avg_psnr = 0
 avg_l1 = 0
 avg_msssim = 0
 min_mse = 1000
@@ -66,6 +67,7 @@ max_mse = 0
 min_idx = 0
 max_idx = 0
 count = 0
+temp11= 0
 
 for i in range(len(stereo1_path_list)):
     img_stereo1 = Image.open(stereo1_path_list[i])
@@ -84,12 +86,13 @@ for i in range(len(stereo1_path_list)):
 
     # Encoded images:
     mse_loss, mse_on_full, final_im1_recon, z1_down = model(input1, input2)
-
+    temp11 += mse_on_full.detach().cpu()
     numpy_input_image = img_stereo1.permute(1, 2, 0).detach().numpy()
     tensor_output_image = torch.squeeze(final_im1_recon).permute(1, 2, 0)
     numpy_output_image = tensor_output_image.cpu().detach().numpy()
     l1 = np.mean(np.abs(numpy_input_image - numpy_output_image))
     mse = np.mean(np.square(numpy_input_image - numpy_output_image))  # * 255**2   #mse_loss.item()/2
+    psnr = -20*np.log10(np.sqrt(mse))
     msssim = 1#ms_ssim(final_im1_recon.cpu().detach(), input1.cpu(), data_range=1.0, size_average=True)
 
     e1 = torch.squeeze(z1_down.cpu()).detach().numpy().flatten()
@@ -98,11 +101,12 @@ for i in range(len(stereo1_path_list)):
     bpp = n_bits/n_pixel
 
 
-    print(mse, msssim, bpp)
+    print(psnr, msssim, bpp)
     avg_bpp += bpp
     avg_msssim += msssim
     avg_l1 = avg_l1 + l1
     avg_mse = avg_mse + mse
+    avg_psnr += psnr
     count = count + 1
     if mse > max_mse:
         max_mse = mse
@@ -113,15 +117,15 @@ for i in range(len(stereo1_path_list)):
 
 avg_bpp = avg_bpp / count
 avg_mse = avg_mse / count
+avg_psnr = avg_psnr / count
 avg_l1 = avg_l1 / count
 avg_msssim = avg_msssim / count
 rms = np.sqrt(avg_mse)
-psnr = -20*np.log10(rms)
 print('min  MSE = ', min_mse)
 print('max MSE = ', max_mse)
 print('average MSE: ', avg_mse,',  ', avg_mse*255**2)
 print('average RMS: ', rms,', ', rms*255)
-print('average PSNR: ', psnr)
+print('average PSNR: ', avg_psnr)
 print('average MS-SSIM: ', avg_msssim)
 print('average  bpp = ', avg_bpp)
 
@@ -140,7 +144,7 @@ if plot_best_and_worst:
     input1 = in1[None, ...].to(device)
     input2 = in2[None, ...].to(device)
     # Encoded images:
-    _, mse, final_im1_recon, _ = model(input1, input2)
+    _, _, final_im1_recon, _ = model(input1, input2)
     img1_minDist_rec = torch.squeeze(final_im1_recon).permute(1, 2, 0).cpu().detach().numpy()
 
 
@@ -156,7 +160,7 @@ if plot_best_and_worst:
     input1 = in1[None, ...].to(device)
     input2 = in2[None, ...].to(device)
     # Encoded images:
-    _, mse, final_im1_recon, _ = model(input1, input2)
+    _, _, final_im1_recon, _ = model(input1, input2)
     img1_maxDist_rec = torch.squeeze(final_im1_recon).permute(1, 2, 0).cpu().detach().numpy()
     #img1_maxDist_rec = img1_maxDist
     ##
