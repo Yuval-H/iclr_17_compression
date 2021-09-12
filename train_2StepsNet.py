@@ -2,7 +2,7 @@ import PIL.Image
 import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from datasets import StereoDataset, StereoPlusDataset
+from datasets import StereoDataset, StereoPlusDataset, StereoDataset_new
 import time
 import torchvision
 from losses import *
@@ -11,40 +11,45 @@ from model_new import *
 from model_small import ImageCompressor_small
 from models.temp import Cheng2020Attention
 from models.classic_DSC_model import classic_DSC_model
-from models.original_att import Cheng2020Attention_2
+from models.original_att import Cheng2020Attention2
+from models.high_bit_rate_model import Cheng2020Attention_highBitRate
 from compressai.zoo import cheng2020_attn
 
 
 ############## Train parameters ##############
-#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_02'
-#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
+#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 #train_folder1 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 #train_folder2 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 #train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/training/image_2'
 #train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/training/image_3'
 
-train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
-train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
+#train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
+#train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 #val_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
 #val_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
-val_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-val_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
+#val_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+#val_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
-batch_size = 4
+stereo_dir_2012 = '/home/access/dev/data_sets/kitti/flow_2012/data_stereo_flow'
+stereo_dir_2015 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow'
+
+batch_size = 1
 lr_start = 1e-4
 epoch_patience = 25
 n_epochs = 25000
-val_every = 25000
+val_every = 1
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/model_best_weights?_23.6psnrOnTest.pth'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/try_train_final_image-image_layer'
+start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/model_best_weights.pth'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/8-bits'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
-#tsfm = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
+#tsfm_val = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
+tsfm_val = transforms.Compose([transforms.CenterCrop((352, 1216)), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.RandomCrop((370, 740)), transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.RandomResizedCrop(256), transforms.RandomHorizontalFlip(),
 #                                transforms.RandomVerticalFlip(), transforms.ToTensor()])
@@ -54,9 +59,12 @@ tsfm = transforms.Compose([transforms.ToTensor()])
 torch.manual_seed(1234)
 torch.cuda.manual_seed_all(1234)
 
-training_data = StereoDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2, randomFlip=False, RandomCrop=True,
-                              transform=tsfm, crop_352_1216=False)
-val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm, RandomCrop=True, crop_352_1216=False)
+#training_data = StereoDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2, randomFlip=False, RandomCrop=True,
+#                              transform=tsfm, crop_352_1216=False)
+#val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm_val, RandomCrop=False, crop_352_1216=False)
+training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=False, RandomCrop=True, crop_352_1216=False, transform=tsfm)
+val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
+
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_data, batch_size=1)
 
@@ -66,9 +74,9 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-#net1 = cheng2020_attn(quality=4).to(device)
 model = Cheng2020Attention()
-#model = Cheng2020Attention_2()
+#model = Cheng2020Attention_highBitRate()
+#model = Cheng2020Attention2()
 #model = classic_DSC_model()
 model = model.to(device)
 
@@ -84,12 +92,10 @@ if start_from_pretrained != '':
     #scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     #epoch_start = checkpoint['epoch']
     #loss = checkpoint['loss']
-    '''
-    global_step_ignore = load_model(model, start_from_pretrained)
-    '''
+
 model.train()
-#'''
-freez2_base_autoencoder = False
+'''
+freez2_base_autoencoder = True
 if freez2_base_autoencoder:
     for param in model.g_a.parameters():
         param.requires_grad = False
@@ -101,7 +107,7 @@ if freez2_base_autoencoder:
         param.requires_grad = False
     for param in model.g_z1hat_z2.parameters():
         param.requires_grad = False
-#'''
+'''
 
 
 # todo: check with & without
@@ -133,8 +139,8 @@ for epoch in range(epoch_start, n_epochs + 1):
 
         mse_1, mse_2, mse_z = model(images_cam1, images_cam2)
 
-        loss = mse_2    #only final rec loss
-        #loss = mse_1 + mse_2   #final and backbone rec loss
+        #loss = mse_2    #only final rec loss
+        loss = mse_1 + mse_2   #final and backbone rec loss
         #loss = mse_1 # only base loss
         #loss = mse_1 + mse_2 + 0.5*mse_z
         #loss = mse_2 + 0.5 * mse_z
@@ -144,7 +150,7 @@ for epoch in range(epoch_start, n_epochs + 1):
 
     train_loss = train_loss / len(train_dataloader)
     # Note that step should be called after validate()
-    scheduler.step(train_loss)
+    #scheduler.step(train_loss)
     if train_loss < best_loss:
         best_loss = train_loss
 

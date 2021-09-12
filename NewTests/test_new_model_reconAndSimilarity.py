@@ -8,20 +8,20 @@ import glob
 import numpy as np
 from model_new import *
 from model import *
-from model_small import ImageCompressor_small
 from models.temp import Cheng2020Attention
-from models.original_att import Cheng2020Attention_2
+from models.high_bit_rate_model import Cheng2020Attention_highBitRate
+from models.original_att import Cheng2020Attention2
 from models.classic_DSC_model import classic_DSC_model
 import gzip
 
 from utils.Conditional_Entropy import compute_conditional_entropy
-
+#/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Using Stereo Paper dataset/try_train_final_image-image_layer/model_best_weights.pth'
-
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/8-bits/model_bestVal_loss.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = Cheng2020Attention()
-#model = Cheng2020Attention_2()
+#model = Cheng2020Attention_highBitRate()
+#model = Cheng2020Attention2()
 #model = classic_DSC_model()
 
 if load_model_new_way:
@@ -40,20 +40,21 @@ stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testin
 # smaller dataset:
 #stereo1_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
+#stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_3_OF_to_2'
 
 # CLIC view test:
 #stereo1_dir = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/im3'
 #stereo2_dir = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/im2'
 
-stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*png'))
-
+stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*11.png'))
+#stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
 
 
 #transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((192, 608)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
-transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
-#transform = transforms.Compose([transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
+transform = transforms.Compose([transforms.ToTensor()])
 
 
 
@@ -67,8 +68,9 @@ max_mse = 0
 min_idx = 0
 max_idx = 0
 count = 0
-temp11= 0
-
+temp_min = 0
+temp_max = 0
+temp1 = 0
 for i in range(len(stereo1_path_list)):
     img_stereo1 = Image.open(stereo1_path_list[i])
     img_stereo2_name = os.path.join(stereo2_dir, os.path.basename(stereo1_path_list[i]))
@@ -86,16 +88,27 @@ for i in range(len(stereo1_path_list)):
 
     # Encoded images:
     mse_loss, mse_on_full, final_im1_recon, z1_down = model(input1, input2)
-    temp11 += mse_on_full.detach().cpu()
+    temp1 += mse_loss.item()
     numpy_input_image = img_stereo1.permute(1, 2, 0).detach().numpy()
     tensor_output_image = torch.squeeze(final_im1_recon).permute(1, 2, 0)
     numpy_output_image = tensor_output_image.cpu().detach().numpy()
     l1 = np.mean(np.abs(numpy_input_image - numpy_output_image))
     mse = np.mean(np.square(numpy_input_image - numpy_output_image))  # * 255**2   #mse_loss.item()/2
     psnr = -20*np.log10(np.sqrt(mse))
-    msssim = 1#ms_ssim(final_im1_recon.cpu().detach(), input1.cpu(), data_range=1.0, size_average=True)
+    msssim = ms_ssim(final_im1_recon.cpu().detach(), input1.cpu(), data_range=1.0, size_average=True, win_size=11) ## should be 11 for full size, 7 for small
 
     e1 = torch.squeeze(z1_down.cpu()).detach().numpy().flatten()
+    temp_min = np.min((temp_min, e1.min()))
+    temp_max = np.max((temp_max, e1.max()))
+    '''
+    if e1.min() < -128:
+        error_message = "code min value is less than 127"
+        raise ValueError(error_message)
+    if e1.max() > 128:
+        error_message = "code max value is more than 127"
+        raise ValueError(error_message)
+    '''
+    e1 = (e1 +127).astype(np.uint8)
     n_bits = gzip.compress(e1).__sizeof__() * 8
     n_pixel = numpy_input_image.shape[0]*numpy_input_image.shape[1]
     bpp = n_bits/n_pixel
@@ -103,7 +116,7 @@ for i in range(len(stereo1_path_list)):
 
     print(psnr, msssim, bpp)
     avg_bpp += bpp
-    avg_msssim += msssim
+    avg_msssim += msssim.item()
     avg_l1 = avg_l1 + l1
     avg_mse = avg_mse + mse
     avg_psnr += psnr
