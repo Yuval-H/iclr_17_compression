@@ -15,8 +15,6 @@
 import torch.nn as nn
 import torch
 
-import pytorch_msssim
-
 from compressai.layers import (
     AttentionBlock,
     ResidualBlock,
@@ -25,6 +23,7 @@ from compressai.layers import (
     conv3x3,
     subpel_conv3x3,
 )
+from compressai.layers.layers import AttentionBlock_7
 
 from compressai.entropy_models import EntropyBottleneck, EntropyModel
 
@@ -101,7 +100,7 @@ class Cheng2020Anchor(JointAutoregressiveHierarchicalPriors):
         return net
 
 
-class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
+class Cheng2020Attention_expandGz(nn.Module):
     """Self-attention model variant from `"Learned Image Compression with
     Discretized Gaussian Mixture Likelihoods and Attention Modules"
     <https://arxiv.org/abs/2001.01568>`_, by Zhengxue Cheng, Heming Sun, Masaru
@@ -182,10 +181,11 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         )
 
         self.g_z1hat_z2 = nn.Sequential(
+            AttentionBlock_7(2*N),
             AttentionBlock(2*N),
-            ##conv3x3(256, 128, stride=1),  ## this added 26/08 for second exp
             ResidualBlock(2*N, 2*N),
             ResidualBlock(2*N, N),
+            AttentionBlock_7(N),
             AttentionBlock(N),
             ResidualBlock(N, N),
         )
@@ -272,8 +272,7 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = False
-        use_msssim = True
+        useL1 = True #True
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()
@@ -281,11 +280,6 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
             mse_loss = 0.5 * loss_l1(im1_hat.clamp(0., 1.), im1) + 0.5 * loss_l1(im2_hat.clamp(0., 1.), im2)
             mse_on_z = loss_l1(z1_hat_hat, z1)
             mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
-        elif use_msssim:
-            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0) +
-                            pytorch_msssim.ms_ssim(im2_hat.clamp(0., 1.), im2, data_range=1.0)))
-            mse_on_z = 1
-            mse_on_full = 1 - pytorch_msssim.ms_ssim(final_im1_recon.clamp(0., 1.), im1, data_range=1.0)
         else:
             mse_loss = 0.5*torch.mean((im1_hat.clamp(0., 1.) - im1).pow(2)) + 0.5*torch.mean((im2_hat.clamp(0., 1.) - im2).pow(2))
             mse_on_z = torch.mean((z1_hat_hat - z1).pow(2))

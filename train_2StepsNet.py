@@ -2,7 +2,7 @@ import PIL.Image
 import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from datasets import StereoDataset, StereoPlusDataset, StereoDataset_new
+from datasets import StereoDataset, StereoPlusDataset, StereoDataset_new, StereoDataset_HoloPix50k
 import time
 import torchvision
 from losses import *
@@ -10,15 +10,20 @@ from model_new import *
 #from model import *
 from model_small import ImageCompressor_small
 from models.temp import Cheng2020Attention
+from models.modelTemp_largerGz import Cheng2020Attention_expandGz
 from models.classic_DSC_model import classic_DSC_model
 from models.original_att import Cheng2020Attention2
 from models.high_bit_rate_model import Cheng2020Attention_highBitRate
+from models.model_temp_DSC import Cheng2020Attention_DSC
+from models.temp_and_PAM import Cheng2020Attention_PAM
 from compressai.zoo import cheng2020_attn
+
+import pytorch_msssim
 
 
 ############## Train parameters ##############
-#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
+#train_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+#train_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 #train_folder1 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 #train_folder2 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
 #train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/training/image_2'
@@ -28,28 +33,33 @@ from compressai.zoo import cheng2020_attn
 #train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 #val_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
 #val_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
-#val_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-#val_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
+#val_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
+#val_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
-stereo_dir_2012 = '/home/access/dev/data_sets/kitti/flow_2012/data_stereo_flow'
-stereo_dir_2015 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow'
+stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
+stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
+
+path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
+path_holoPix_left_test = '/home/access/dev/Holopix50k/test/left'
 
 batch_size = 1
-lr_start = 1e-4
-epoch_patience = 25
+lr_start = 1e-5
+epoch_patience = 10
 n_epochs = 25000
-val_every = 1
+val_every = 5
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/model_best_weights.pth'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/8-bits'
+start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/HoloPix50k/4bits/model_best_weights00.pth'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/HoloPix50k/4bits'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
 #tsfm_val = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
-tsfm_val = transforms.Compose([transforms.CenterCrop((352, 1216)), transforms.ToTensor()])
+#tsfm_val = transforms.Compose([transforms.CenterCrop((352, 1216)), transforms.ToTensor()])
+tsfm_val = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
+#tsfm_val = transforms.Compose([transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.RandomCrop((370, 740)), transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.RandomResizedCrop(256), transforms.RandomHorizontalFlip(),
 #                                transforms.RandomVerticalFlip(), transforms.ToTensor()])
@@ -62,8 +72,12 @@ torch.cuda.manual_seed_all(1234)
 #training_data = StereoDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2, randomFlip=False, RandomCrop=True,
 #                              transform=tsfm, crop_352_1216=False)
 #val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm_val, RandomCrop=False, crop_352_1216=False)
-training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=False, RandomCrop=True, crop_352_1216=False, transform=tsfm)
-val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
+
+#training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=False, RandomCrop=True, crop_352_1216=False, transform=tsfm)
+#val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
+
+training_data = StereoDataset_HoloPix50k(path_holoPix_left_train, RandomCrop=True, transform=tsfm)
+val_data = StereoDataset_HoloPix50k(path_holoPix_left_test, transform=tsfm_val)
 
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_data, batch_size=1)
@@ -75,12 +89,16 @@ print('Using {} device'.format(device))
 
 # Load model:
 model = Cheng2020Attention()
+#model = Cheng2020Attention_PAM()
+#model = Cheng2020Attention_expandGz()
+#model = Cheng2020Attention_DSC()
 #model = Cheng2020Attention_highBitRate()
 #model = Cheng2020Attention2()
 #model = classic_DSC_model()
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
+#optimizer = torch.optim.SGD(model.parameters(), lr=lr_start, weight_decay=1e-8, momentum=0.9)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=epoch_patience, verbose=True)
 
 epoch_start = 1
@@ -111,8 +129,8 @@ if freez2_base_autoencoder:
 
 
 # todo: check with & without
-clipping_value = 5.0
-torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
+#clipping_value = 5.0
+#torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
 
 
 # Epochs
@@ -137,10 +155,18 @@ for epoch in range(epoch_start, n_epochs + 1):
 
         optimizer.zero_grad()
 
-        mse_1, mse_2, mse_z = model(images_cam1, images_cam2)
+        mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)
+        #mse_1, mse_2, _, _ = model(images_cam1, images_cam2)
 
-        #loss = mse_2    #only final rec loss
-        loss = mse_1 + mse_2   #final and backbone rec loss
+        #msssim = ms_ssim(images_cam1, img_recon, data_range=1.0, size_average=True, win_size=11) ## should be 11 for full size, 7 for small
+        #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
+
+        #if not msssim == msssim:
+        #    print('nan value')
+
+        #loss = 1 - msssim
+        loss = mse_2    #only final rec loss
+        #loss = mse_1 + mse_2   #final and backbone rec loss
         #loss = mse_1 # only base loss
         #loss = mse_1 + mse_2 + 0.5*mse_z
         #loss = mse_2 + 0.5 * mse_z
@@ -188,8 +214,10 @@ for epoch in range(epoch_start, n_epochs + 1):
             images_cam2 = images_cam2.to(device)
 
             # get model outputs
-            _, mse_2, _, _ = model(images_cam1, images_cam2)
-            loss = mse_2  # only final rec loss
+            _, mse_2, img_recon, _ = model(images_cam1, images_cam2)
+            msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
+            loss = 1 - msssim
+            #loss = mse_2  # only final rec loss
             #loss = mse_1 + mse_2 + 0.5 * mse_z
             val_loss += loss.item()  # * images_cam1.size(0)
         model.train()

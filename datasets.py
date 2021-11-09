@@ -143,6 +143,61 @@ class StereoDataset(Dataset):
         return img_stereo1, img_stereo2
 
 
+###################################################################
+class StereoDataset_HoloPix50k(Dataset):
+    """Stereo Image Pairs dataset."""
+    def __init__(self, path_to_left_image, RandomCrop=False, transform=transforms.ToTensor()):
+        """
+        Args:
+            path_to_left_image (string): Directory with left image of the stereo pair - HoloPix50k dataset
+                note1: folader are assumed to be in this order:  Holopix50k  //  train/test  //   left/right
+                note2: matching images from the left/right folders are assumed to have the same names, except for left-right switch.
+                note3: assumes *jpg* format images
+            transform (optional): Optional transform to be applied on the images.
+        """
+
+        self.stereo_image_2_path_list = glob.glob(os.path.join(path_to_left_image, '*jpg'))
+        self.transform = transform
+        self.RandomCrop = RandomCrop
+
+    def __len__(self):
+        return len(self.stereo_image_2_path_list)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_stereo1 = Image.open(self.stereo_image_2_path_list[idx])
+        img_stereo2_name = self.stereo_image_2_path_list[idx].replace('left', 'right')
+        try:
+            img_stereo2 = Image.open(img_stereo2_name)
+        except ValueError:
+            raise ValueError("Error when reading stereo2-image. Image names in both folder should be the same.")
+
+        if self.transform:
+            img_stereo1 = self.transform(img_stereo1)
+            img_stereo2 = self.transform(img_stereo2)
+
+        M = 32
+        shape = img_stereo1.size()
+        img_stereo1 = img_stereo1[:, :M * (shape[1] // M), :M * (shape[2] // M)]
+        img_stereo2 = img_stereo2[:, :M * (shape[1] // M), :M * (shape[2] // M)]
+
+        if self.RandomCrop:
+            #print(img_stereo2_name)
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(704, 1280))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(352, 768))  # multiplication of 32
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))  # multiplication of 32
+            img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
+            img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
+
+
+
+        return img_stereo1, img_stereo2
+
+####
+#########################################################################
+
 ####
 class StereoDataset_new(Dataset):
     """Stereo Image Pairs dataset."""
@@ -188,9 +243,11 @@ class StereoDataset_new(Dataset):
         if self.transform:
             img_stereo1 = self.transform(img_stereo1)
             img_stereo2 = self.transform(img_stereo2)
-
         if self.RandomCrop:
-            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(352, 1216))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(352, 1216))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 480))  # multiplication of 32
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 960))  # multiplication of 32
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
 
@@ -211,6 +268,44 @@ class StereoDataset_new(Dataset):
         return img_stereo1, img_stereo2
 
 ####
+###################################################
+class StereoDataset_passrNet(Dataset):
+    def __init__(self, path_recon, transform=transforms.ToTensor(), randomCrop=False):
+
+        self.stereo_recon_path_list = glob.glob(os.path.join(path_recon, '*png'))
+        self.transform = transform
+        self.randomCrop = randomCrop
+
+    def __len__(self):
+        return len(self.stereo_recon_path_list)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        im_rec = Image.open(self.stereo_recon_path_list[idx])
+        im_original = Image.open(self.stereo_recon_path_list[idx].replace('reconstructed', 'original'))
+        im_si = Image.open(self.stereo_recon_path_list[idx].replace('reconstructed', 'SI'))
+
+        im_rec = self.transform(im_rec)
+        im_original = self.transform(im_original)
+        im_si = self.transform(im_si)
+
+        if self.randomCrop:
+            i, j, h, w = transforms.RandomCrop.get_params(im_rec, output_size=(320, 640))  # multiplication of 32
+            im_rec = im_rec[:, i:i + h, j:j + w]
+            im_original = im_original[:, i:i + h, j:j + w]
+            im_si = im_si[:, i:i + h, j:j + w]
+
+            # resize rec and si-image. wil be upscaled by 2.
+            #tsfm = transforms.Compose([transforms.Resize((160, 320))])
+            #im_rec = tsfm(im_rec)
+            #im_si = tsfm(im_si)
+
+
+        return im_rec, im_original, im_si
+
+###################################################
 class StereoPlusDataset(Dataset):
     """Stereo Image Pairs dataset + added  image for contrastive learning."""
     def __init__(self, stereo1_dir, stereo2_dir, contrast_dir, RandomCrop=False, transform=transforms.ToTensor()):

@@ -191,6 +191,8 @@ def ms_ssim(X, Y, win_size=11, win_sigma=1.5, win=None, data_range=255, size_ave
 
     if size_average:
         msssim_val = msssim_val.mean()
+    if not msssim_val == msssim_val:
+        print('1')
     return msssim_val
 
 
