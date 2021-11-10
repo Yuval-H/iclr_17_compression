@@ -25,7 +25,7 @@ using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
 start_from_pretrained = ''
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/passrnet'
+save_path = '/home/access/dev/weights-passr'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -52,7 +52,7 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-model = PASSRnet(upscale_factor=1)
+model = PASSRnet(upscale_factor=2)
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)

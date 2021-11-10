@@ -43,16 +43,16 @@ path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
 path_holoPix_left_test = '/home/access/dev/Holopix50k/test/left'
 
 batch_size = 1
-lr_start = 1e-5
-epoch_patience = 10
+lr_start = 1e-4
+epoch_patience = 16
 n_epochs = 25000
-val_every = 5
+val_every = 1
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/HoloPix50k/4bits/model_best_weights00.pth'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/HoloPix50k/4bits'
+start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/msssim-try/model_bestVal_loss0.pth'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/msssim-try'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -73,11 +73,11 @@ torch.cuda.manual_seed_all(1234)
 #                              transform=tsfm, crop_352_1216=False)
 #val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm_val, RandomCrop=False, crop_352_1216=False)
 
-#training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=False, RandomCrop=True, crop_352_1216=False, transform=tsfm)
-#val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
+training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=True, RandomCrop=True, crop_352_1216=False, transform=tsfm)
+val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
 
-training_data = StereoDataset_HoloPix50k(path_holoPix_left_train, RandomCrop=True, transform=tsfm)
-val_data = StereoDataset_HoloPix50k(path_holoPix_left_test, transform=tsfm_val)
+#training_data = StereoDataset_HoloPix50k(path_holoPix_left_train, RandomCrop=True, transform=tsfm)
+#val_data = StereoDataset_HoloPix50k(path_holoPix_left_test, transform=tsfm_val)
 
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_data, batch_size=1)
@@ -215,9 +215,9 @@ for epoch in range(epoch_start, n_epochs + 1):
 
             # get model outputs
             _, mse_2, img_recon, _ = model(images_cam1, images_cam2)
-            msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
-            loss = 1 - msssim
-            #loss = mse_2  # only final rec loss
+            #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
+            #loss = 1 - msssim
+            loss = mse_2  # only final rec loss
             #loss = mse_1 + mse_2 + 0.5 * mse_z
             val_loss += loss.item()  # * images_cam1.size(0)
         model.train()

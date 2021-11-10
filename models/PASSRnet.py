@@ -45,8 +45,7 @@ class PASSRnet(nn.Module):
         buffer_right = self.init_feature_right(x_right)
         if is_training == 1:
             ### parallax attention
-            buffer, (M_right_to_left, M_left_to_right), (M_left_right_left, M_right_left_right), \
-            (V_left_to_right, V_right_to_left) = self.pam(buffer_left, buffer_right, is_training)
+            buffer, (M_right_to_left, M_left_to_right), (M_left_right_left, M_right_left_right),(V_left_to_right, V_right_to_left) = self.pam(buffer_left, buffer_right, is_training)
             ### upscaling
             out = self.upscale(buffer)
             return out#, (M_right_to_left, M_left_to_right), (M_left_right_left, M_right_left_right), \
@@ -155,10 +154,10 @@ class PAM(nn.Module):
 
         ## output
         if is_training == 1:
-            return out#, \
-               #(M_right_to_left.contiguous().view(b, h, w, w), M_left_to_right.contiguous().view(b, h, w, w)), \
-               #(M_left_right_left.view(b,h,w,w), M_right_left_right.view(b,h,w,w)), \
-               #(V_left_to_right, V_right_to_left)
+            return out, \
+               (M_right_to_left.contiguous().view(b, h, w, w), M_left_to_right.contiguous().view(b, h, w, w)), \
+               (M_left_right_left.view(b,h,w,w), M_right_left_right.view(b,h,w,w)), \
+               (V_left_to_right, V_right_to_left)
         if is_training == 0:
             return out
 

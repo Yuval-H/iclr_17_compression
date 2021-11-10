@@ -298,9 +298,9 @@ class StereoDataset_passrNet(Dataset):
             im_si = im_si[:, i:i + h, j:j + w]
 
             # resize rec and si-image. wil be upscaled by 2.
-            #tsfm = transforms.Compose([transforms.Resize((160, 320))])
-            #im_rec = tsfm(im_rec)
-            #im_si = tsfm(im_si)
+            tsfm = transforms.Compose([transforms.Resize((160, 320))])
+            im_rec = tsfm(im_original) #tsfm(im_rec)
+            im_si = tsfm(im_si)
 
 
         return im_rec, im_original, im_si

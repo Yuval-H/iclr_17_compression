@@ -22,7 +22,7 @@ from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/HoloPix50k/4bits/model_best_weights00.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/msssim-try/model_bestVal_loss0.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_expandGz()
 #model = Cheng2020Attention_DSC()
@@ -40,13 +40,13 @@ else:
 net = model.to(device)
 net.eval()
 
-stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'
+#stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'
 stereo2_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview/testing/image_2'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview/testing/image_2'
 #stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 
 # smaller dataset:
-#stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
+stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_3_OF_to_2'
 
@@ -57,8 +57,8 @@ stereo2_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_
 list1 = glob.glob(os.path.join(stereo1_dir, '*11.png'))
 list2 = glob.glob(os.path.join(stereo2_dir, '*11.png'))
 #stereo1_path_list = list1 + list2
-#stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
-stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
+stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
+#stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
 
 
 #transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
@@ -88,8 +88,8 @@ temp_max = 0
 
 for i in range(len(stereo1_path_list)):
     img_stereo1 = Image.open(stereo1_path_list[i])
-    img_stereo2_name = stereo1_path_list[i].replace('left', 'right')
-    #img_stereo2_name = stereo1_path_list[i].replace('image_2', 'image_3')
+    #img_stereo2_name = stereo1_path_list[i].replace('left', 'right')
+    img_stereo2_name = stereo1_path_list[i].replace('image_2', 'image_3')
     img_stereo2 = Image.open(img_stereo2_name)
     img_stereo1 = transform(img_stereo1)
     img_stereo2 = transform(img_stereo2)
