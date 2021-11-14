@@ -214,6 +214,8 @@ class StereoDataset_new(Dataset):
         subFolder = 'training' if isTrainingData else 'testing'
         stereo2012_dir = os.path.join(stereo_dir_2012, subFolder, 'image_2')
         stereo2015_dir = os.path.join(stereo_dir_2015, subFolder, 'image_2')
+        #stereo2012_dir = stereo_dir_2012
+        #stereo2015_dir = stereo_dir_2015
         if isTrainingData:
             stereo2012_path_list = glob.glob(os.path.join(stereo2012_dir, '*png'))
             stereo2015_path_list = glob.glob(os.path.join(stereo2015_dir, '*png'))
@@ -270,40 +272,49 @@ class StereoDataset_new(Dataset):
 ####
 ###################################################
 class StereoDataset_passrNet(Dataset):
-    def __init__(self, path_recon, transform=transforms.ToTensor(), randomCrop=False):
+    def __init__(self, stereo_dir_2012, stereo_dir_2015, transform=transforms.ToTensor(),
+                 isTrainingData=True, randomCrop=False):
 
-        self.stereo_recon_path_list = glob.glob(os.path.join(path_recon, '*png'))
+        subFolder = 'training' if isTrainingData else 'testing'
+        stereo2012_dir = os.path.join(stereo_dir_2012, subFolder, 'image_2')
+        stereo2015_dir = os.path.join(stereo_dir_2015, subFolder, 'image_2')
+        if isTrainingData:
+            stereo2012_path_list = glob.glob(os.path.join(stereo2012_dir, '*png'))
+            stereo2015_path_list = glob.glob(os.path.join(stereo2015_dir, '*png'))
+        else:
+            stereo2012_path_list = glob.glob(os.path.join(stereo2012_dir, '*10.png'))
+            stereo2015_path_list = glob.glob(os.path.join(stereo2015_dir, '*10.png'))
+        self.stereo_left_path_list = stereo2012_path_list + stereo2015_path_list
         self.transform = transform
         self.randomCrop = randomCrop
 
     def __len__(self):
-        return len(self.stereo_recon_path_list)
+        return len(self.stereo_left_path_list)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        im_rec = Image.open(self.stereo_recon_path_list[idx])
-        im_original = Image.open(self.stereo_recon_path_list[idx].replace('reconstructed', 'original'))
-        im_si = Image.open(self.stereo_recon_path_list[idx].replace('reconstructed', 'SI'))
+        im_left = Image.open(self.stereo_left_path_list[idx])
+        im_right = Image.open(self.stereo_left_path_list[idx].replace('image_2', 'image_3'))
 
-        im_rec = self.transform(im_rec)
-        im_original = self.transform(im_original)
-        im_si = self.transform(im_si)
+        im_left = self.transform(im_left)
+        im_right = self.transform(im_right)
 
         if self.randomCrop:
-            i, j, h, w = transforms.RandomCrop.get_params(im_rec, output_size=(320, 640))  # multiplication of 32
-            im_rec = im_rec[:, i:i + h, j:j + w]
-            im_original = im_original[:, i:i + h, j:j + w]
-            im_si = im_si[:, i:i + h, j:j + w]
+            #i, j, h, w = transforms.RandomCrop.get_params(im_left, output_size=(320, 640))  # multiplication of 32
+            i, j, h, w = transforms.RandomCrop.get_params(im_left, output_size=(320, 320))  # multiplication of 32
+            im_left_blurry = im_left[:, i:i + h, j:j + w]
+            im_left = im_left[:, i:i + h, j:j + w]
+            im_right = im_right[:, i:i + h, j:j + w]
 
-            # resize rec and si-image. wil be upscaled by 2.
-            tsfm = transforms.Compose([transforms.Resize((160, 320))])
-            im_rec = tsfm(im_original) #tsfm(im_rec)
-            im_si = tsfm(im_si)
+            # downsample and upsample left image - results in a blurry image
+            #tsfm = transforms.Compose([transforms.Resize((160, 320)), transforms.Resize((320, 640))])
+            tsfm = transforms.Compose([transforms.Resize((160, 160)), transforms.Resize((320, 320))])
+            im_left_blurry = tsfm(im_left_blurry)
 
 
-        return im_rec, im_original, im_si
+        return im_left_blurry, im_right, im_left
 
 ###################################################
 class StereoPlusDataset(Dataset):

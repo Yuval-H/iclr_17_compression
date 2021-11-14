@@ -13,10 +13,10 @@ from models.PASSRnet import PASSRnet
 
 
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
-pretrained_model_path = '/home/access/dev/weights-passr/model_best_weights.pth'
+pretrained_model_path = '/home/access/dev/weights-passr/model_bestVal_loss.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-model = PASSRnet(2)
+model = PASSRnet(1)
 
 checkpoint = torch.load(pretrained_model_path)
 model.load_state_dict(checkpoint['model_state_dict'])
@@ -25,16 +25,21 @@ net = model.to(device)
 net.eval()
 
 
-path_to_rec = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview/training/image_2'
-stereo_recon_path_list = glob.glob(os.path.join(path_to_rec, '*.png'))
+path_to_rec1 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview/testing/image_2'
+path_to_rec2 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'
+list1 = glob.glob(os.path.join(path_to_rec1, '*.png'))
+list2 = glob.glob(os.path.join(path_to_rec2, '*.png'))
+stereo_recon_path_list = list1 + list2
 
 
-transform = transforms.Compose([transforms.CenterCrop((320, 640)), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((320, 640)), transforms.ToTensor()])
+transform = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.ToTensor()])
-transform_resize = transforms.Compose([transforms.CenterCrop((320, 640)), transforms.Resize((160, 320)), transforms.ToTensor()])
-
-test_no_net = transforms.Compose([transforms.CenterCrop((320, 640)), transforms.Resize((160, 320)), transforms.Resize((320, 640)),transforms.ToTensor()])
+#transform_resize = transforms.Compose([transforms.CenterCrop((320, 640)), transforms.Resize((160, 320)), transforms.ToTensor()])
+transform_resize = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.Resize((160,160)), transforms.ToTensor()])
+#transform_blurr = transforms.Compose([transforms.CenterCrop((320, 640)), transforms.Resize((160, 320)), transforms.Resize((320, 640)),transforms.ToTensor()])
+transform_blurr = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.Resize((160, 160)), transforms.Resize((320, 320)),transforms.ToTensor()])
 
 avg_bpp = 0
 avg_mse = 0
@@ -60,12 +65,12 @@ for i in range(len(stereo_recon_path_list)):
     img_stereo2 = Image.open(img_stereo2_name)
 
     im_left = transform(img_stereo1)
-    im_left_resized = transform_resize(img_stereo1)
-    im_right_resize = transform_resize(img_stereo2)
+    im_left_blurry = transform_blurr(img_stereo1)
+    im_right = transform(img_stereo2)
 
     im_left = im_left[None, ...].to(device)
-    im_left_resized = im_left_resized[None, ...].to(device)
-    im_right_resize = im_right_resize[None, ...].to(device)
+    im_left_blurry = im_left_blurry[None, ...].to(device)
+    im_right = im_right[None, ...].to(device)
 
     #im_rec = Image.open(stereo_recon_path_list[i])
     #im_original = Image.open(stereo_recon_path_list[i].replace('reconstructed', 'original'))
@@ -81,13 +86,13 @@ for i in range(len(stereo_recon_path_list)):
 
     # Encoded images:
 
-    sr_recon_left = model(im_left_resized, im_right_resize, is_training=True)
+    sr_recon_left = model(im_left_blurry, im_right, is_training=False)
     #sr_recon_left = test_no_net(img_stereo1)
     #sr_recon_left = sr_recon_left[None, ...].to(device)
 
     numpy_input_image = torch.squeeze(im_left).permute(1, 2, 0).cpu().detach().numpy()
-    tensor_output_image = torch.squeeze(sr_recon_left).permute(1, 2, 0)
-    numpy_output_image = tensor_output_image.cpu().detach().numpy()
+    numpy_output_image = torch.squeeze(sr_recon_left).permute(1, 2, 0).cpu().detach().numpy()
+    #numpy_output_image = tensor_output_image.cpu().detach().numpy()
     l1 = np.mean(np.abs(numpy_input_image - numpy_output_image))
     mse = np.mean(np.square(numpy_input_image - numpy_output_image))  # * 255**2   #mse_loss.item()/2
     psnr = -20*np.log10(np.sqrt(mse))
@@ -140,15 +145,14 @@ if plot_best_and_worst:
     img_stereo2 = Image.open(img_stereo2_name)
 
     im_left = transform(img_stereo1)
-    im_left_resized = transform_resize(img_stereo1)
-    im_right_resize = transform_resize(img_stereo2)
+    im_left_blurry = transform_blurr(img_stereo1)
+    im_right = transform(img_stereo2)
 
     im_left = im_left[None, ...].to(device)
-    im_left_resized = im_left_resized[None, ...].to(device)
-    im_right_resize = im_right_resize[None, ...].to(device)
+    im_left_blurry = im_left_blurry[None, ...].to(device)
+    im_right = im_right[None, ...].to(device)
     # Encoded images:
-    #sr_recon_left = model(im_left_resized, im_right_resize, is_training=True)
-    sr_recon_left = test_no_net(img_stereo1)
+    sr_recon_left = model(im_left_blurry, im_right, is_training=True)
     sr_recon_left = sr_recon_left[None, ...].to(device)
     img1_minDist_rec = torch.squeeze(sr_recon_left).permute(1, 2, 0).cpu().detach().numpy()
 
@@ -158,15 +162,14 @@ if plot_best_and_worst:
     img_stereo2 = Image.open(img_stereo2_name)
 
     im_left = transform(img_stereo1)
-    im_left_resized = transform_resize(img_stereo1)
-    im_right_resize = transform_resize(img_stereo2)
+    im_left_blurry = transform_blurr(img_stereo1)
+    im_right = transform(img_stereo2)
 
     im_left = im_left[None, ...].to(device)
-    im_left_resized = im_left_resized[None, ...].to(device)
-    im_right_resize = im_right_resize[None, ...].to(device)
+    im_left_blurry = im_left_blurry[None, ...].to(device)
+    im_right = im_right[None, ...].to(device)
     # Encoded images:
-    #sr_recon_left = model(im_left_resized, im_right_resize, is_training=True)
-    sr_recon_left = test_no_net(img_stereo1)
+    sr_recon_left = model(im_left_blurry, im_right, is_training=True)
     sr_recon_left = sr_recon_left[None, ...].to(device)
     img1_maxDist_rec = torch.squeeze(sr_recon_left).permute(1, 2, 0).cpu().detach().numpy()
     #img1_maxDist_rec = img1_maxDist

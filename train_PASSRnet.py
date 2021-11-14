@@ -14,17 +14,21 @@ from models.PASSRnet import PASSRnet
 ############## Train parameters ##############
 
 path_to_reconstructed_images = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-GPNN/reconstructed'
+#stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
+#stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
+stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
+stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
 
 batch_size = 1
 lr_start = 1e-4
-epoch_patience = 20
+epoch_patience = 6
 n_epochs = 25000
-val_every = 25000
+val_every = 1
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = ''
+start_from_pretrained = '/home/access/dev/weights-passr/model_best_weights1.pth'
 save_path = '/home/access/dev/weights-passr'
 
 ################ Data transforms ################
@@ -40,8 +44,8 @@ tsfm_val = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToT
 torch.manual_seed(1234)
 torch.cuda.manual_seed_all(1234)
 
-training_data = StereoDataset_passrNet(path_to_reconstructed_images, tsfm, randomCrop=True)
-val_data = StereoDataset_passrNet(path_to_reconstructed_images, tsfm_val)
+training_data = StereoDataset_passrNet(stereo_dir_2012, stereo_dir_2015, tsfm, randomCrop=True)
+val_data = StereoDataset_passrNet(stereo_dir_2012, stereo_dir_2015, tsfm, randomCrop=True, isTrainingData=False)
 
 
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
@@ -52,7 +56,7 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-model = PASSRnet(upscale_factor=2)
+model = PASSRnet(upscale_factor=1)
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
@@ -75,39 +79,72 @@ model.train()
 # Epochs
 best_loss = 10000
 best_val_loss = 10000
+#criterion = nn.L1Loss()
+criterion_mse = nn.MSELoss()
+criterion_L1 = nn.L1Loss()
 for epoch in range(epoch_start, n_epochs + 1):
     # monitor training loss
     train_loss = 0.0
-
     # Training
     epoch_start_time = time.time()
-    loss_l1 = nn.L1Loss()
     for batch, data in enumerate(train_dataloader):
         # Get stereo pair
-        recon_left, im_left, im_right = data
-        recon_left = recon_left.to(device)
-        im_left = im_left.to(device)
-        im_right = im_right.to(device)
+        LR_left, HR_right, HR_left = data
+        b, c, h, w = LR_left.shape
+        LR_left = LR_left.to(device)
+        HR_left = HR_left.to(device)
+        HR_right = HR_right.to(device)
 
         optimizer.zero_grad()
 
-        #mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)
-        sr_recon_left = model(recon_left, im_right, is_training=True)
+        SR_left, (M_right_to_left, M_left_to_right), (M_left_right_left, M_right_left_right), \
+        (V_left_to_right, V_right_to_left) = model(LR_left, HR_right, is_training=True)
+        ###SR_left = model(LR_left, HR_right, is_training=True)
 
-        #msssim = ms_ssim(images_cam1, img_recon, data_range=1.0, size_average=True, win_size=11) ## should be 11 for full size, 7 for small
         #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
-
         #if not msssim == msssim:
         #    print('nan value')
 
-        loss = loss_l1(sr_recon_left, im_left)
+        #loss = criterion(SR_left, HR_left)
+
+        ### loss_SR
+        loss_SR = criterion_mse(SR_left, HR_left)
+
+        ### loss_smoothness
+        loss_h = criterion_L1(M_right_to_left[:, :-1, :, :], M_right_to_left[:, 1:, :, :]) + \
+                 criterion_L1(M_left_to_right[:, :-1, :, :], M_left_to_right[:, 1:, :, :])
+        loss_w = criterion_L1(M_right_to_left[:, :, :-1, :-1], M_right_to_left[:, :, 1:, 1:]) + \
+                 criterion_L1(M_left_to_right[:, :, :-1, :-1], M_left_to_right[:, :, 1:, 1:])
+        loss_smooth = loss_w + loss_h
+
+        ### loss_cycle
+        Identity = (torch.eye(w, w).repeat(b, h, 1, 1)).to(device)
+        loss_cycle = criterion_L1(M_left_right_left * V_left_to_right.permute(0, 2, 1, 3),
+                                  Identity * V_left_to_right.permute(0, 2, 1, 3)) + \
+                     criterion_L1(M_right_left_right * V_right_to_left.permute(0, 2, 1, 3),
+                                  Identity * V_right_to_left.permute(0, 2, 1, 3))
+
+        ### loss_photometric
+        HR_right_warped = torch.bmm(M_right_to_left.contiguous().view(b * h, w, w),
+                                    HR_right.permute(0, 2, 3, 1).contiguous().view(b * h, w, c))
+        HR_right_warped = HR_right_warped.view(b, h, w, c).contiguous().permute(0, 3, 1, 2)
+        LR_left_warped = torch.bmm(M_left_to_right.contiguous().view(b * h, w, w),
+                                   LR_left.permute(0, 2, 3, 1).contiguous().view(b * h, w, c))
+        LR_left_warped = LR_left_warped.view(b, h, w, c).contiguous().permute(0, 3, 1, 2)
+
+        loss_photo = criterion_L1(LR_left * V_left_to_right, HR_right_warped * V_left_to_right) + \
+                     criterion_L1(HR_right * V_right_to_left, LR_left_warped * V_right_to_left)
+
+        ### losses
+        loss = loss_SR + 0.005 * (loss_photo + loss_smooth + loss_cycle)
+
         loss.backward()
         optimizer.step()
         train_loss += loss.item() #* images_cam1.size(0)
 
     train_loss = train_loss / len(train_dataloader)
     # Note that step should be called after validate()
-    scheduler.step(train_loss)
+    #scheduler.step(train_loss)
     if train_loss < best_loss:
         best_loss = train_loss
 
@@ -136,18 +173,14 @@ for epoch in range(epoch_start, n_epochs + 1):
         val_loss = 0
         for batch, data in enumerate(val_dataloader):
             # Get stereo pair
-            images_cam1, images_cam2 = data
-            # Cut to be multiple of 32 (M)
-            shape = images_cam1.size()
-            images_cam1 = images_cam1[:, :, :M * (shape[2] // M), :M * (shape[3] // M)]
-            images_cam2 = images_cam2[:, :, :M * (shape[2] // M), :M * (shape[3] // M)]
-            images_cam1 = images_cam1.to(device)
-            images_cam2 = images_cam2.to(device)
+            LR_left, HR_right, HR_left = data
+            LR_left = LR_left.to(device)
+            HR_left = HR_left.to(device)
+            HR_right = HR_right.to(device)
 
             # get model outputs
-            _, mse_2, _, _ = model(images_cam1, images_cam2)
-            loss = mse_2  # only final rec loss
-            #loss = mse_1 + mse_2 + 0.5 * mse_z
+            SR_left = model(LR_left, HR_right, is_training=False)
+            loss = criterion_L1(SR_left, HR_left)
             val_loss += loss.item()  # * images_cam1.size(0)
         model.train()
         val_loss = val_loss / len(val_dataloader)

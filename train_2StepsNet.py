@@ -10,6 +10,7 @@ from model_new import *
 #from model import *
 from model_small import ImageCompressor_small
 from models.temp import Cheng2020Attention
+from models.temp_allRes import Cheng2020Attention_addZyDown
 from models.modelTemp_largerGz import Cheng2020Attention_expandGz
 from models.classic_DSC_model import classic_DSC_model
 from models.original_att import Cheng2020Attention2
@@ -36,8 +37,10 @@ import pytorch_msssim
 #val_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
 #val_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
-stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
-stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
+stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
+stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
+#stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_16/image_2'
+#stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_16/image_2'
 
 path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
 path_holoPix_left_test = '/home/access/dev/Holopix50k/test/left'
@@ -51,8 +54,8 @@ save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/msssim-try/model_bestVal_loss0.pth'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/msssim-try'
+start_from_pretrained = ''
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/try_allRes'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -86,9 +89,9 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Using {} device'.format(device))
 
 
-
 # Load model:
-model = Cheng2020Attention()
+#model = Cheng2020Attention()
+model = Cheng2020Attention_addZyDown()
 #model = Cheng2020Attention_PAM()
 #model = Cheng2020Attention_expandGz()
 #model = Cheng2020Attention_DSC()
@@ -165,8 +168,8 @@ for epoch in range(epoch_start, n_epochs + 1):
         #    print('nan value')
 
         #loss = 1 - msssim
-        loss = mse_2    #only final rec loss
-        #loss = mse_1 + mse_2   #final and backbone rec loss
+        #loss = mse_2    #only final rec loss
+        loss = mse_1 + mse_2   #final and backbone rec loss
         #loss = mse_1 # only base loss
         #loss = mse_1 + mse_2 + 0.5*mse_z
         #loss = mse_2 + 0.5 * mse_z

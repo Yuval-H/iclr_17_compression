@@ -101,7 +101,7 @@ class Cheng2020Anchor(JointAutoregressiveHierarchicalPriors):
         return net
 
 
-class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
+class Cheng2020Attention_addZyDown(nn.Module): #(Cheng2020Anchor):
     """Self-attention model variant from `"Learned Image Compression with
     Discretized Gaussian Mixture Likelihoods and Attention Modules"
     <https://arxiv.org/abs/2001.01568>`_, by Zhengxue Cheng, Heming Sun, Masaru
@@ -182,10 +182,10 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         )
 
         self.g_z1hat_z2 = nn.Sequential(
-            AttentionBlock(2*N),
+            AttentionBlock(3*N),
             ##conv3x3(256, 128, stride=1),  ## this added 26/08 for second exp
-            ResidualBlock(2*N, 2*N),
-            ResidualBlock(2*N, N),
+            ResidualBlock(3*N, 3*N),
+            ResidualBlock(3*N, N),
             AttentionBlock(N),
             ResidualBlock(N, N),
         )
@@ -246,18 +246,18 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
 
         # clamp it to 8 bits
         z1_down = torch.clamp(z1_down, -128, 128)
-
         z1_hat = self.g_s22(z1_down)
 
+        # further compress Z2 to match features:
+        z2_down = self.g_a22(z2)
+        z2_hat = self.g_s22(z2_down)
+
         # cat z1_hat, z2 -> get z1_hat_hat
-        z_cat = torch.cat((z1_hat, z2), 1)
+        z_cat = torch.cat((z1_hat, z2_hat, z2), 1)
         #z_cat = torch.cat((torch.zeros_like(z1_hat), z2), 1)
         #z_cat = torch.cat((z1_hat, torch.zeros_like(z2)), 1)
-        try_expanded_G_Z = False
-        if try_expanded_G_Z:
-            z1_hat_hat = self.g_z1hat_z2_tryExpand(z_cat)
-        else:
-            z1_hat_hat = self.g_z1hat_z2(z_cat)
+
+        z1_hat_hat = self.g_z1hat_z2(z_cat)
 
         # recon images
         final_im1_recon = self.g_s(z1_hat_hat)
@@ -272,8 +272,8 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = False
-        use_msssim = True
+        useL1 = True
+        use_msssim = False
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()

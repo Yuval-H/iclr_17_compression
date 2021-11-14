@@ -15,6 +15,7 @@ from models.high_bit_rate_model import Cheng2020Attention_highBitRate
 from models.original_att import Cheng2020Attention2
 from models.classic_DSC_model import classic_DSC_model
 from models.model_temp_DSC import Cheng2020Attention_DSC
+from models.temp_allRes import Cheng2020Attention_addZyDown
 import gzip
 import pytorch_msssim
 
@@ -22,11 +23,12 @@ from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/msssim-try/model_bestVal_loss0.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/model_bestVal_loss_msssim.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_expandGz()
 #model = Cheng2020Attention_DSC()
 model = Cheng2020Attention()
+#model = Cheng2020Attention_addZyDown()
 #model = Cheng2020Attention_PAM()
 #model = Cheng2020Attention_highBitRate()
 #model = Cheng2020Attention2()
@@ -62,8 +64,8 @@ stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
 
 
 #transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
-#transform = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
-transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
+transform = transforms.Compose([transforms.CenterCrop((320, 640)), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.ToTensor()])
@@ -137,7 +139,7 @@ for i in range(len(stereo1_path_list)):
         error_message = "code max value is more than 127"
         raise ValueError(error_message)
     '''
-    e1 = (e1 +127).astype(np.uint8)
+    e1 = (e1 +128).astype(np.uint8)
     n_bits = gzip.compress(e1).__sizeof__() * 8
     n_pixel = numpy_input_image.shape[0]*numpy_input_image.shape[1]
     bpp = n_bits/n_pixel

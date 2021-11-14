@@ -48,8 +48,8 @@ class PASSRnet(nn.Module):
             buffer, (M_right_to_left, M_left_to_right), (M_left_right_left, M_right_left_right),(V_left_to_right, V_right_to_left) = self.pam(buffer_left, buffer_right, is_training)
             ### upscaling
             out = self.upscale(buffer)
-            return out#, (M_right_to_left, M_left_to_right), (M_left_right_left, M_right_left_right), \
-                   #(V_left_to_right, V_right_to_left)
+            return out, (M_right_to_left, M_left_to_right), (M_left_right_left, M_right_left_right), \
+                   (V_left_to_right, V_right_to_left)
         if is_training == 0:
             ### parallax attention
             buffer = self.pam(buffer_left, buffer_right, is_training)
