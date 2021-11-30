@@ -201,7 +201,8 @@ class StereoDataset_HoloPix50k(Dataset):
 ####
 class StereoDataset_new(Dataset):
     """Stereo Image Pairs dataset."""
-    def __init__(self, stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=False, RandomCrop=False, crop_352_1216=False, transform=transforms.ToTensor()):
+    def __init__(self, stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=False, RandomCrop=False,
+                 crop_352_1216=False,colorJitter=False, transform=transforms.ToTensor()):
         """
         Args:
             stereo_dir_2012 (string): Directory with stereo images from 2012 kitti dataset.
@@ -227,6 +228,7 @@ class StereoDataset_new(Dataset):
         self.randomFlip = randomFlip
         self.RandomCrop = RandomCrop
         self.crop_352_1216 = crop_352_1216
+        self.colorJitter = colorJitter
 
     def __len__(self):
         return len(self.stereo_image_2_path_list)
@@ -245,13 +247,20 @@ class StereoDataset_new(Dataset):
         if self.transform:
             img_stereo1 = self.transform(img_stereo1)
             img_stereo2 = self.transform(img_stereo2)
+
         if self.RandomCrop:
             #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(352, 1216))  # multiplication of 32
-            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))  # multiplication of 32
-            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 480))  # multiplication of 32
-            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 960))  # multiplication of 32
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 1224))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 960))  # multiplication of 32
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
+
+        if self.colorJitter:
+            tsfm = transforms.Compose([transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.4)])
+            img_stereo1 = tsfm(torch.cat((img_stereo1[None,:],img_stereo2[None,:]), 0))
+            img_stereo2 = img_stereo1[1,:,:,:]
+            img_stereo1 = img_stereo1[0, :, :, :]
 
         if self.randomFlip:
             # convert to numpy, do augmentation, convert back to tensor
@@ -261,16 +270,46 @@ class StereoDataset_new(Dataset):
             img_stereo1 = torch.tensor(img_stereo1.copy()).permute(2, 0, 1)
             img_stereo2 = torch.tensor(img_stereo2.copy()).permute(2, 0, 1)
 
-        if self.crop_352_1216:
-            # cut to the same size:
-            img_stereo1 = img_stereo1[:, :352, :1216]
-            img_stereo2 = img_stereo2[:, :352, :1216]
 
 
         return img_stereo1, img_stereo2
 
 ####
 ###################################################
+class StereoDataset_FIF_enhance(Dataset):
+    def __init__(self, path_to_reconstructed_images, transform=transforms.ToTensor(), randomCrop=False):
+
+        self.rec_path_list = glob.glob(os.path.join(path_to_reconstructed_images, '*png'))
+        self.transform = transform
+        self.randomCrop = randomCrop
+
+    def __len__(self):
+        return len(self.rec_path_list)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        im_rec = Image.open(self.rec_path_list[idx])
+        im_original = Image.open(self.rec_path_list[idx].replace('reconstructed', 'original'))
+        im_si = Image.open(self.rec_path_list[idx].replace('reconstructed', 'SI'))
+
+        im_rec = self.transform(im_rec)
+        im_original = self.transform(im_original)
+        im_si = self.transform(im_si)
+
+        if self.randomCrop:
+            i, j, h, w = transforms.RandomCrop.get_params(im_rec, output_size=(320, 1216))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(im_rec, output_size=(320, 320))  # multiplication of 32
+            im_rec = im_rec[:, i:i + h, j:j + w]
+            im_original = im_original[:, i:i + h, j:j + w]
+            im_si = im_si[:, i:i + h, j:j + w]
+
+
+        #return torch.cat((im_rec,im_si),0), im_rec, im_original
+        return im_si, im_rec, im_original
+
+##################################################
 class StereoDataset_passrNet(Dataset):
     def __init__(self, stereo_dir_2012, stereo_dir_2015, transform=transforms.ToTensor(),
                  isTrainingData=True, randomCrop=False):

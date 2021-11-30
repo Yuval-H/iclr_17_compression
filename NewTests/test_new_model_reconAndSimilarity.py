@@ -9,13 +9,10 @@ import numpy as np
 from model_new import *
 from model import *
 from models.temp import Cheng2020Attention
-from models.temp_and_PAM import Cheng2020Attention_PAM
-from models.modelTemp_largerGz import Cheng2020Attention_expandGz
-from models.high_bit_rate_model import Cheng2020Attention_highBitRate
-from models.original_att import Cheng2020Attention2
-from models.classic_DSC_model import classic_DSC_model
-from models.model_temp_DSC import Cheng2020Attention_DSC
-from models.temp_allRes import Cheng2020Attention_addZyDown
+from models.temp_and_FIF import Cheng2020Attention_FIF
+from models.temp_1bpp import Cheng2020Attention_1bpp
+from models.temp_016bpp import Cheng2020Attention_0_16bpp
+from models.temp_highBitRate import Cheng2020Attention_highBitRate2
 import gzip
 import pytorch_msssim
 
@@ -23,16 +20,14 @@ from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/model_bestVal_loss_msssim.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/model_bestVal_loss0.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-#model = Cheng2020Attention_expandGz()
-#model = Cheng2020Attention_DSC()
-model = Cheng2020Attention()
-#model = Cheng2020Attention_addZyDown()
-#model = Cheng2020Attention_PAM()
-#model = Cheng2020Attention_highBitRate()
-#model = Cheng2020Attention2()
-#model = classic_DSC_model()
+#model = Cheng2020Attention_FIF()
+#model = Cheng2020Attention_1bpp()
+model = Cheng2020Attention_0_16bpp()
+#model = Cheng2020Attention()
+#model = Cheng2020Attention_highBitRate2()
+
 
 if load_model_new_way:
     checkpoint = torch.load(pretrained_model_path)
@@ -42,13 +37,13 @@ else:
 net = model.to(device)
 net.eval()
 
-#stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'
+stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview/testing/image_2'
 stereo2_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview/testing/image_2'#'/home/access/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview/testing/image_2'
 #stereo1_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 
 # smaller dataset:
-stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
+#stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_3_OF_to_2'
 
@@ -58,14 +53,14 @@ stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multi
 
 list1 = glob.glob(os.path.join(stereo1_dir, '*11.png'))
 list2 = glob.glob(os.path.join(stereo2_dir, '*11.png'))
-#stereo1_path_list = list1 + list2
-stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
+stereo1_path_list = list1 + list2
+#stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
 #stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
 
 
 #transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
-transform = transforms.Compose([transforms.CenterCrop((320, 640)), transforms.ToTensor()])
-#transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
+transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.ToTensor()])
@@ -85,8 +80,8 @@ count = 0
 temp_min = 0
 temp_max = 0
 
-#file_msssim = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/twoStepsCompression/msssim_list_KITTI_stereo_target_0.031bpp_twoStepsNet.txt',"a")
-#file_bpp = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/twoStepsCompression/bpp_list_KITTI_stereo_target_0.031bpp_twoStepNet.txt',"a")
+file_msssim = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/twoStepsCompression/msssim_list_KITTI_stereo_target_0.16bpp_twoStepsNet.txt',"a")
+#file_bpp = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/twoStepsCompression/bpp_list_KITTI_stereo_target_0.125bpp_twoStepNet .txt',"a")
 
 for i in range(len(stereo1_path_list)):
     img_stereo1 = Image.open(stereo1_path_list[i])
@@ -144,7 +139,7 @@ for i in range(len(stereo1_path_list)):
     n_pixel = numpy_input_image.shape[0]*numpy_input_image.shape[1]
     bpp = n_bits/n_pixel
 
-    #file_msssim.write(str(msssim.item()) + '\n')
+    file_msssim.write(str(msssim.item()) + '\n')
     #file_bpp.write(str(bpp) + '\n')
 
     print(psnr, msssim, bpp)
@@ -161,7 +156,7 @@ for i in range(len(stereo1_path_list)):
         min_mse = mse
         min_idx = i
 
-#file_msssim.close()
+file_msssim.close()
 #file_bpp.close()
 
 avg_bpp = avg_bpp / count

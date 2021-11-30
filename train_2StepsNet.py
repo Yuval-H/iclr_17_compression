@@ -10,13 +10,11 @@ from model_new import *
 #from model import *
 from model_small import ImageCompressor_small
 from models.temp import Cheng2020Attention
-from models.temp_allRes import Cheng2020Attention_addZyDown
-from models.modelTemp_largerGz import Cheng2020Attention_expandGz
-from models.classic_DSC_model import classic_DSC_model
-from models.original_att import Cheng2020Attention2
-from models.high_bit_rate_model import Cheng2020Attention_highBitRate
-from models.model_temp_DSC import Cheng2020Attention_DSC
-from models.temp_and_PAM import Cheng2020Attention_PAM
+from models.temp_highBitRate import Cheng2020Attention_highBitRate2
+from models.temp_and_FIF import Cheng2020Attention_FIF
+from models.temp_1bpp import Cheng2020Attention_1bpp
+from models.temp_016bpp import Cheng2020Attention_0_16bpp
+from models.temp_smaller_spatial_dim import Cheng2020Attention_smaller_Z
 from compressai.zoo import cheng2020_attn
 
 import pytorch_msssim
@@ -42,26 +40,27 @@ stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/d
 #stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_16/image_2'
 #stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_16/image_2'
 
-path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
-path_holoPix_left_test = '/home/access/dev/Holopix50k/test/left'
+#path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
+#path_holoPix_left_test = '/home/access/dev/Holopix50k/test/left'
 
-batch_size = 1
-lr_start = 1e-4
-epoch_patience = 16
+batch_size = 6
+lr_start = 1e-6
+epoch_patience = 10
 n_epochs = 25000
 val_every = 1
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = ''
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/try_allRes'
+start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/model_bestVal_loss0.pth'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
+#tsfm = transforms.Compose([transforms.ColorJitter(brightness=0.4,contrast=0.4,saturation=0.4,hue=0.4), transforms.ToTensor()])
 #tsfm_val = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
-#tsfm_val = transforms.Compose([transforms.CenterCrop((352, 1216)), transforms.ToTensor()])
-tsfm_val = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
+tsfm_val = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
+#tsfm_val = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
 #tsfm_val = transforms.Compose([transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.RandomCrop((370, 740)), transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #tsfm = transforms.Compose([transforms.RandomResizedCrop(256), transforms.RandomHorizontalFlip(),
@@ -76,7 +75,8 @@ torch.cuda.manual_seed_all(1234)
 #                              transform=tsfm, crop_352_1216=False)
 #val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm_val, RandomCrop=False, crop_352_1216=False)
 
-training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=True, RandomCrop=True, crop_352_1216=False, transform=tsfm)
+training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=True,
+                                  RandomCrop=True, crop_352_1216=False, colorJitter=True, transform=tsfm)
 val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
 
 #training_data = StereoDataset_HoloPix50k(path_holoPix_left_train, RandomCrop=True, transform=tsfm)
@@ -91,13 +91,11 @@ print('Using {} device'.format(device))
 
 # Load model:
 #model = Cheng2020Attention()
-model = Cheng2020Attention_addZyDown()
-#model = Cheng2020Attention_PAM()
-#model = Cheng2020Attention_expandGz()
-#model = Cheng2020Attention_DSC()
-#model = Cheng2020Attention_highBitRate()
-#model = Cheng2020Attention2()
-#model = classic_DSC_model()
+#model = Cheng2020Attention_highBitRate2()
+#model = Cheng2020Attention_FIF()
+#model = Cheng2020Attention_1bpp()
+model = Cheng2020Attention_0_16bpp()
+#model = Cheng2020Attention_smaller_Z()
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
@@ -168,8 +166,8 @@ for epoch in range(epoch_start, n_epochs + 1):
         #    print('nan value')
 
         #loss = 1 - msssim
-        #loss = mse_2    #only final rec loss
-        loss = mse_1 + mse_2   #final and backbone rec loss
+        loss = mse_2    #only final rec loss
+        #loss = mse_1 + mse_2   #final and backbone rec loss
         #loss = mse_1 # only base loss
         #loss = mse_1 + mse_2 + 0.5*mse_z
         #loss = mse_2 + 0.5 * mse_z

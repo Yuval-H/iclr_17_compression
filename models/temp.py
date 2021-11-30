@@ -225,8 +225,8 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
 
         channels = 8 # change back to 8 when done with exp
         quant_noise_feature2 = torch.zeros(im1.size(0), channels, im1.size(2) // 32, im1.size(3) // 32).cuda()
-        quant_noise_feature2 = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature2), -0.5, 0.5)
-        #quant_noise_feature2 = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature2), -8, 8)
+        #quant_noise_feature2 = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature2), -0.5, 0.5)
+        quant_noise_feature2 = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature2), -8, 8)
 
         z1 = self.g_a(im1)
         z2 = self.g_a(im2)
@@ -241,8 +241,8 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         if self.training:
             z1_down = self.g_a22(z1) + quant_noise_feature2 #self.g_a22(compressed_z1) + quant_noise_feature2
         else:
-            #z1_down = torch.round(self.g_a22(z1)/16)*16
-            z1_down = torch.round(self.g_a22(z1))  #torch.round(self.g_a22(compressed_z1))
+            z1_down = torch.round(self.g_a22(z1)/16)*16
+            #z1_down = torch.round(self.g_a22(z1))  #torch.round(self.g_a22(compressed_z1))
 
         # clamp it to 8 bits
         z1_down = torch.clamp(z1_down, -128, 128)

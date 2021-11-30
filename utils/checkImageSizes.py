@@ -8,7 +8,7 @@ import os
 
 
 
-path = '/home/access/dev/Holopix50k/test/left'
+path = '/home/access/dev/Holopix50k/train/left'
 
 files = os.listdir(path)
 min_h = 20000
@@ -19,8 +19,10 @@ for i in range(len(files)):
     image = Image.open(file_name)
     h, w = image.size
     if h < min_h:
+        print('h',h)
         min_h = h
     if w < min_w:
+        print('w', w)
         min_w = w
 
 print(min_h, min_w)
