@@ -1,9 +1,23 @@
+# Copyright 2020 InterDigital Communications, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import torch.nn as nn
 import torch
 
 import pytorch_msssim
 
+from compressai.layers import AttentionBlock_7
 from compressai.layers import (
     AttentionBlock,
     ResidualBlock,
@@ -13,9 +27,14 @@ from compressai.layers import (
     subpel_conv3x3,
 )
 
+from compressai.entropy_models import EntropyBottleneck, EntropyModel
+
+from compressai.models.priors import JointAutoregressiveHierarchicalPriors
 
 
-class Cheng2020Attention_0_16bpp(nn.Module):
+
+
+class Cheng2020Attention_freqSep(nn.Module):
     """Self-attention model variant from `"Learned Image Compression with
     Discretized Gaussian Mixture Likelihoods and Attention Modules"
     <https://arxiv.org/abs/2001.01568>`_, by Zhengxue Cheng, Heming Sun, Masaru
@@ -33,6 +52,7 @@ class Cheng2020Attention_0_16bpp(nn.Module):
         #super().__init__(N=N, **kwargs)
         super().__init__()
 
+        self.use_another_net_on_recon = False
         self.out_channel_N = N
         self.g_a = nn.Sequential(
             ResidualBlock(3, 3),
@@ -65,21 +85,23 @@ class Cheng2020Attention_0_16bpp(nn.Module):
             ResidualBlock(64, 64),
             ResidualBlockWithStride(64, 64, stride=2),
             AttentionBlock(64),
-            ResidualBlock(64, 41),
-            ResidualBlock(41, 41),
-            AttentionBlock(41)
+            conv3x3(64, 32, stride=1),
+            ResidualBlock(32, 32),
+            conv3x3(32, 8, stride=1),
+            AttentionBlock(8),
         )
 
         self.g_s22 = nn.Sequential(
-            AttentionBlock(41),
-            ResidualBlock(41, 41),
-            ResidualBlock(41, 64),
+            AttentionBlock(8),
+            conv3x3(8, 32, stride=1),
+            ResidualBlock(32, 32),
+            conv3x3(32, 64, stride=1),
             ResidualBlock(64, 64),
             ResidualBlockUpsample(64, N, 2),
             ResidualBlock(N, N),
         )
 
-        self.g_z1hat_z2 = nn.Sequential(
+        self.g_z1hat_z2_freq1 = nn.Sequential(
             AttentionBlock(2*N),
             ResidualBlock(2*N, 2*N),
             ResidualBlock(2*N, N),
@@ -87,14 +109,24 @@ class Cheng2020Attention_0_16bpp(nn.Module):
             ResidualBlock(N, N),
         )
 
+        self.g_z1hat_z2_freq2 = nn.Sequential(
+            AttentionBlock_7(2 * N),
+            nn.Conv2d(2*N, 2*N, kernel_size=7, stride=1, padding=3),
+            ResidualBlock(2 * N, N),
+            AttentionBlock_7(N),
+            ResidualBlock(N, N),
+        )
 
-    def forward(self, im1, im2, mask_channels=None):
+
+
+    def forward(self, im1, im2):
         quant_noise_feature = torch.zeros(im1.size(0), self.out_channel_N, im1.size(2) // 16,
                                           im1.size(3) // 16).cuda()
-        quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -8, 8)
+        quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -0.5, 0.5)
 
-        channels = 41
+        channels = 8 # change back to 8 when done with exp
         quant_noise_feature2 = torch.zeros(im1.size(0), channels, im1.size(2) // 32, im1.size(3) // 32).cuda()
+        #quant_noise_feature2 = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature2), -0.5, 0.5)
         quant_noise_feature2 = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature2), -8, 8)
 
         z1 = self.g_a(im1)
@@ -107,16 +139,10 @@ class Cheng2020Attention_0_16bpp(nn.Module):
             compressed_z2 = torch.round(z2)
 
         # further compress z1
-        z1_down = self.g_a22(z1)
-        #######################
-        # Temp Experiment - mask channels
-        if mask_channels is not None:
-            z1_down[:, mask_channels, :, :] = 0
-        #######################
         if self.training:
-            z1_down = z1_down + quant_noise_feature2
+            z1_down = self.g_a22(z1) + quant_noise_feature2
         else:
-            z1_down = torch.round(z1_down/16)*16
+            z1_down = torch.round(self.g_a22(z1)/16)*16
 
         # clamp it to 8 bits
         z1_down = torch.clamp(z1_down, -128, 128)
@@ -128,10 +154,16 @@ class Cheng2020Attention_0_16bpp(nn.Module):
         #z_cat = torch.cat((torch.zeros_like(z1_hat), z2), 1)
         #z_cat = torch.cat((z1_hat, torch.zeros_like(z2)), 1)
 
-        z1_hat_hat = self.g_z1hat_z2(z_cat)
+        z1_hat_hat = self.g_z1hat_z2_freq1(z_cat) + self.g_z1hat_z2_freq2(z_cat)
 
-        # recon images:
+        # recon images
         final_im1_recon = self.g_s(z1_hat_hat)
+
+
+        if self.use_another_net_on_recon:
+            # Note: adding the net results as a residual to the reconstructed image.
+            cat_rec_and_im2 = torch.cat((final_im1_recon, im2), 1)
+            final_im1_recon = final_im1_recon + self.g_rec1_im2_new(cat_rec_and_im2)
 
         im1_hat = self.g_s(compressed_z1)
         im2_hat = self.g_s(compressed_z2)
@@ -147,7 +179,7 @@ class Cheng2020Attention_0_16bpp(nn.Module):
             mse_on_z = loss_l1(z1_hat_hat, z1)
             mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
         elif use_msssim:
-            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim(im1_hat.clamp(0., 1.), im1, data_range=1.0) +
+            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0) +
                             pytorch_msssim.ms_ssim(im2_hat.clamp(0., 1.), im2, data_range=1.0)))
             mse_on_z = 1
             mse_on_full = 1 - pytorch_msssim.ms_ssim(final_im1_recon.clamp(0., 1.), im1, data_range=1.0)
@@ -159,4 +191,4 @@ class Cheng2020Attention_0_16bpp(nn.Module):
         if self.training:
             return mse_loss, mse_on_full, mse_on_z, torch.clip(final_im1_recon, 0, 1)
         else:
-            return mse_loss, mse_on_full, torch.clip(final_im1_recon, 0, 1), z1_down
+            return (z1-z1_hat,z1_hat, z2), mse_on_full, torch.clip(final_im1_recon, 0, 1), z1_down

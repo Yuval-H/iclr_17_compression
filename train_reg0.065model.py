@@ -7,39 +7,21 @@ import time
 import torchvision
 from losses import *
 from model_new import *
-#from model import *
-from model_small import ImageCompressor_small
 from models.temp import Cheng2020Attention
-from models.temp_highBitRate import Cheng2020Attention_highBitRate2
-from models.temp_and_FIF import Cheng2020Attention_FIF
-from models.temp_1bpp import Cheng2020Attention_1bpp
-from models.temp_016bpp import Cheng2020Attention_0_16bpp
-from models.test_freqSepNet import Cheng2020Attention_freqSep
-from models.temp_smaller_spatial_dim import Cheng2020Attention_smaller_Z
-from compressai.zoo import cheng2020_attn
+from models.temp_reg_0_0625 import Cheng2020Attention_reg_0_0625
 
 import kornia
 
 import pytorch_msssim
 
+####
 
 ############## Train parameters ##############
-#train_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-#train_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
-#train_folder1 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
-#train_folder2 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
-#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/training/image_2'
-#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/training/image_3'
-
-#train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
-#train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
-#val_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
-#val_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
-#val_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-#val_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
 stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
 stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
+#stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
+#stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
 #stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_16/image_2'
 #stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_16/image_2'
 
@@ -48,38 +30,26 @@ stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/d
 
 batch_size = 6
 lr_start = 1e-4
-epoch_patience = 10
+epoch_patience = 5
+
 n_epochs = 25000
-val_every = 1
+val_every = 1000
 save_every = 2000
-using_blank_loss = False
-hammingLossOnBinaryZ = False
-useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/model_bestVal_loss.pth'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net'
+start_from_pretrained = ''
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/Regressive model'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
-#tsfm = transforms.Compose([transforms.ColorJitter(brightness=0.4,contrast=0.4,saturation=0.4,hue=0.4), transforms.ToTensor()])
-#tsfm_val = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 tsfm_val = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
 #tsfm_val = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
-#tsfm_val = transforms.Compose([transforms.ToTensor()])
-#tsfm = transforms.Compose([transforms.RandomCrop((370, 740)), transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
-#tsfm = transforms.Compose([transforms.RandomResizedCrop(256), transforms.RandomHorizontalFlip(),
-#                                transforms.RandomVerticalFlip(), transforms.ToTensor()])
 
 
 ######### Set Seeds ###########
 torch.manual_seed(1234)
 torch.cuda.manual_seed_all(1234)
 
-#training_data = StereoDataset(stereo1_dir=train_folder1, stereo2_dir=train_folder2, randomFlip=False, RandomCrop=True,
-#                              transform=tsfm, crop_352_1216=False)
-#val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm_val, RandomCrop=False, crop_352_1216=False)
-
 training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=True,
-                                  RandomCrop=True, crop_352_1216=False, colorJitter=True, transform=tsfm)
+                                  RandomCrop=True, crop_352_1216=False, colorJitter=False, transform=tsfm)
 val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
 
 #training_data = StereoDataset_HoloPix50k(path_holoPix_left_train, RandomCrop=True, transform=tsfm)
@@ -92,18 +62,21 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Using {} device'.format(device))
 
 
-# Load model:
-#model = Cheng2020Attention()
-#model = Cheng2020Attention_highBitRate2()
-#model = Cheng2020Attention_FIF()
-#model = Cheng2020Attention_1bpp()
-model = Cheng2020Attention_0_16bpp()
-#model = Cheng2020Attention_freqSep()
-#model = Cheng2020Attention_smaller_Z()
+# Load base model   -  0.03125 bpp:
+path_base_model = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/start_from_holopix/model_bestVal_loss_bestSoFar.pth'
+model_0_031 = Cheng2020Attention()
+checkpoint = torch.load(path_base_model)
+model_0_031.load_state_dict(checkpoint['model_state_dict'])
+model_0_031 = model_0_031.to(device)
+model_0_031.eval()
+
+# Load regressive model - adds another 0.03125 bpp
+model = Cheng2020Attention_reg_0_0625()
 model = model.to(device)
+model.train()
+
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
-#optimizer = torch.optim.SGD(model.parameters(), lr=lr_start, weight_decay=1e-8, momentum=0.9)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=epoch_patience, verbose=True)
 
 epoch_start = 1
@@ -117,30 +90,18 @@ if start_from_pretrained != '':
     #loss = checkpoint['loss']
 
 model.train()
-'''
-freez2_base_autoencoder = True
-if freez2_base_autoencoder:
-    for param in model.g_a.parameters():
-        param.requires_grad = False
-    for param in model.g_s.parameters():
-        param.requires_grad = False
-    for param in model.g_a22.parameters():
-        param.requires_grad = False
-    for param in model.g_s22.parameters():
-        param.requires_grad = False
-    for param in model.g_z1hat_z2.parameters():
-        param.requires_grad = False
-'''
 
 
 # todo: check with & without
-#clipping_value = 5.0
-#torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
+clipping_value = 5.0
+torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
 
-lossL1 = nn.L1Loss()
+
 # Epochs
 best_loss = 10000
 best_val_loss = 10000
+lossL1 = nn.L1Loss()
+lossMSE = nn.MSELoss()
 for epoch in range(epoch_start, n_epochs + 1):
     # monitor training loss
     train_loss = 0.0
@@ -160,33 +121,29 @@ for epoch in range(epoch_start, n_epochs + 1):
 
         optimizer.zero_grad()
 
-        #mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)
-        mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2, mask_channels=[16, 31, 3])
-        #mse_1, mse_2, _, _ = model(images_cam1, images_cam2)
+        # Get Z_2 and Z1_hat from 0.031_bpp_model
+        _, _, im_rec_base, _ = model_0_031(images_cam1, images_cam2)
 
-        #msssim = ms_ssim(images_cam1, img_recon, data_range=1.0, size_average=True, win_size=11) ## should be 11 for full size, 7 for small
-        #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
+        # add regressive data  - using regressive model
+        res_rec = model(images_cam1, images_cam2)
 
-        #if not msssim == msssim:
-        #    print('nan value')
+        final_rec = im_rec_base + res_rec
 
-        #loss_laplacian = lossL1(kornia.filters.laplacian(img_recon, 3), kornia.filters.laplacian(images_cam1, 3))
+        #rec_loss = lossL1(images_cam1, final_rec)
+        #res_zero_loss = 1/(1 + lossMSE(res_rec, torch.zeros_like(res_rec).to(device)))
+        #loss_laplacian = lossL1(kornia.filters.laplacian(final_rec,3), kornia.filters.laplacian(images_cam1,3))
+        #loss = 10*rec_loss + res_zero_loss
+        loss_msssim = 1 - pytorch_msssim.ms_ssim(final_rec, images_cam1, data_range=1.0)
 
-        #loss = 8*loss_laplacian + mse_2
+        loss = loss_msssim#rec_loss + 5*loss_laplacian
 
-        #loss = 1 - msssim
-        loss = mse_2    #only final rec loss
-        #loss = mse_1 + mse_2   #final and backbone rec loss
-        #loss = mse_1 # only base loss
-        #loss = mse_1 + mse_2 + 0.5*mse_z
-        #loss = mse_2 + 0.5 * mse_z
         loss.backward()
         optimizer.step()
         train_loss += loss.item() #* images_cam1.size(0)
 
     train_loss = train_loss / len(train_dataloader)
     # Note that step should be called after validate()
-    #scheduler.step(train_loss)
+    scheduler.step(train_loss)
     if train_loss < best_loss:
         best_loss = train_loss
 
@@ -197,9 +154,7 @@ for epoch in range(epoch_start, n_epochs + 1):
             'scheduler_state_dict': scheduler.state_dict(),
             'loss': train_loss,
         }, save_path+'/model_best_weights.pth')
-        #save_model(model, 1, save_path) #save_model(model, epoch, save_path)
     elif epoch % save_every == 0:
-        #save_model(model, epoch, save_path)
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
@@ -223,14 +178,20 @@ for epoch in range(epoch_start, n_epochs + 1):
             images_cam1 = images_cam1.to(device)
             images_cam2 = images_cam2.to(device)
 
-            # get model outputs
-            #_, mse_2, img_recon, _ = model(images_cam1, images_cam2)
-            _, mse_2, img_recon, _ = model(images_cam1, images_cam2, mask_channels=[16, 31, 3])
-            #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
-            #loss = 1 - msssim
-            loss = mse_2  # only final rec loss
-            #loss = mse_1 + mse_2 + 0.5 * mse_z
-            val_loss += loss.item()  # * images_cam1.size(0)
+            # Get Z_2 and Z1_hat from 0.031_bpp_model
+            #(z1_hat_1, z2), _, _, _ = model_0_031(images_cam1, images_cam2)
+            # add regressive data  - using regressive model
+            #rec_loss, _, _ = model(images_cam1, z2, z1_hat_1)
+
+            # Get Z_2 and Z1_hat from 0.031_bpp_model
+            _, _, im_rec_base, _ = model_0_031(images_cam1, images_cam2)
+
+            # add regressive data  - using regressive model
+            res_rec,_ = model(images_cam1, images_cam2)
+            final_rec = im_rec_base + res_rec
+            rec_loss = lossL1(images_cam1, final_rec)
+
+            val_loss += rec_loss.item()  # * images_cam1.size(0)
         model.train()
         val_loss = val_loss / len(val_dataloader)
         scheduler.step(val_loss)

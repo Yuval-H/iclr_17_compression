@@ -17,7 +17,7 @@ import torch
 
 import pytorch_msssim
 
-from compressai.layers import (
+from models.layers_GELU import (
     AttentionBlock,
     ResidualBlock,
     ResidualBlockUpsample,
@@ -26,6 +26,16 @@ from compressai.layers import (
     subpel_conv3x3,
 )
 
+'''
+from compressai.layers import (
+    AttentionBlock,
+    ResidualBlock,
+    ResidualBlockUpsample,
+    ResidualBlockWithStride,
+    conv3x3,
+    subpel_conv3x3,
+)
+'''
 from compressai.entropy_models import EntropyBottleneck, EntropyModel
 
 from compressai.models.priors import JointAutoregressiveHierarchicalPriors
@@ -294,4 +304,4 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         if self.training:
             return mse_loss, mse_on_full, mse_on_z, torch.clip(final_im1_recon, 0, 1)
         else:
-            return mse_loss, mse_on_full, torch.clip(final_im1_recon, 0, 1), z1_down
+            return (z1-z1_hat,z1_hat, z2), mse_on_full, torch.clip(final_im1_recon, 0, 1), z1_down
