@@ -21,13 +21,13 @@ from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/model_bestVal_loss.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/try train again/model_best_weights.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_FIF()
 #model = Cheng2020Attention_1bpp()
 #model = Cheng2020Attention_freqSep()
-model = Cheng2020Attention_0_16bpp()
-#model = Cheng2020Attention()
+#model = Cheng2020Attention_0_16bpp()
+model = Cheng2020Attention()
 #model = Cheng2020Attention_highBitRate2()
 
 
@@ -45,7 +45,7 @@ stereo2_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_
 #stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 
 # smaller dataset:
-#stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
+stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_3_OF_to_2'
 
@@ -55,15 +55,16 @@ stereo2_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_
 
 list1 = glob.glob(os.path.join(stereo1_dir, '*11.png'))
 list2 = glob.glob(os.path.join(stereo2_dir, '*11.png'))
-stereo1_path_list = list1 + list2
-#stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
+#stereo1_path_list = list1 + list2
+stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
 #stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
 
 
 #transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
 transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
-#transform = transforms.Compose([transforms.Resize((384, 1248), interpolation=Image.BICUBIC), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((320, 960)), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.Resize((320, 960), interpolation=Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.ToTensor()])
 
@@ -102,7 +103,7 @@ for i in range(len(stereo1_path_list)):
     input2 = img_stereo2[None, ...].to(device)
 
     # Encoded images:
-    mse_loss, mse_on_full, final_im1_recon, z1_down = model(input1, input2)  # try to run only with mse_on_full
+    mse_loss, mse_on_full, final_im1_recon, z1_down = model(input1, input2)#,mask_channels=[16, 31, 3])  # try to run only with mse_on_full
     numpy_input_image = img_stereo1.permute(1, 2, 0).detach().numpy()
     tensor_output_image = torch.squeeze(final_im1_recon).permute(1, 2, 0)
     numpy_output_image = tensor_output_image.cpu().detach().numpy()

@@ -251,7 +251,7 @@ class StereoDataset_new(Dataset):
         if self.RandomCrop:
             #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(352, 1216))  # multiplication of 32
             i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))  # multiplication of 32
-            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 1224))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(128, 320))  # multiplication of 32
             #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 960))  # multiplication of 32
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]

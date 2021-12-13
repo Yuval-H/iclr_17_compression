@@ -16,7 +16,7 @@ import torch.nn as nn
 import torch
 
 import pytorch_msssim
-
+'''
 from models.layers_GELU import (
     AttentionBlock,
     ResidualBlock,
@@ -25,7 +25,6 @@ from models.layers_GELU import (
     conv3x3,
     subpel_conv3x3,
 )
-
 '''
 from compressai.layers import (
     AttentionBlock,
@@ -35,7 +34,7 @@ from compressai.layers import (
     conv3x3,
     subpel_conv3x3,
 )
-'''
+
 from compressai.entropy_models import EntropyBottleneck, EntropyModel
 
 from compressai.models.priors import JointAutoregressiveHierarchicalPriors
@@ -282,8 +281,8 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = False
-        use_msssim = True
+        useL1 = True
+        use_msssim = False
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()
@@ -292,10 +291,10 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
             mse_on_z = loss_l1(z1_hat_hat, z1)
             mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
         elif use_msssim:
-            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0) +
-                            pytorch_msssim.ms_ssim(im2_hat.clamp(0., 1.), im2, data_range=1.0)))
+            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0, win_size=7) +
+                            pytorch_msssim.ms_ssim(im2_hat.clamp(0., 1.), im2, data_range=1.0, win_size=7)))
             mse_on_z = 1
-            mse_on_full = 1 - pytorch_msssim.ms_ssim(final_im1_recon.clamp(0., 1.), im1, data_range=1.0)
+            mse_on_full = 1 - pytorch_msssim.ms_ssim(final_im1_recon.clamp(0., 1.), im1, data_range=1.0, win_size=7)
         else:
             mse_loss = 0.5*torch.mean((im1_hat.clamp(0., 1.) - im1).pow(2)) + 0.5*torch.mean((im2_hat.clamp(0., 1.) - im2).pow(2))
             mse_on_z = torch.mean((z1_hat_hat - z1).pow(2))

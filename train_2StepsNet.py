@@ -46,17 +46,17 @@ stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/d
 #path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
 #path_holoPix_left_test = '/home/access/dev/Holopix50k/test/left'
 
-batch_size = 6
+batch_size = 5
 lr_start = 1e-4
-epoch_patience = 10
+epoch_patience = 16
 n_epochs = 25000
 val_every = 1
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/model_bestVal_loss.pth'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net'
+start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/model_bestVal_loss0.pth'
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/masked ch 33-41, 0.125 bpp'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -141,6 +141,10 @@ lossL1 = nn.L1Loss()
 # Epochs
 best_loss = 10000
 best_val_loss = 10000
+
+masked_channels = [32,33,34,35,36,37,38,39,40]
+
+
 for epoch in range(epoch_start, n_epochs + 1):
     # monitor training loss
     train_loss = 0.0
@@ -161,7 +165,7 @@ for epoch in range(epoch_start, n_epochs + 1):
         optimizer.zero_grad()
 
         #mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)
-        mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2, mask_channels=[16, 31, 3])
+        mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2, masked_channels)
         #mse_1, mse_2, _, _ = model(images_cam1, images_cam2)
 
         #msssim = ms_ssim(images_cam1, img_recon, data_range=1.0, size_average=True, win_size=11) ## should be 11 for full size, 7 for small
@@ -225,7 +229,7 @@ for epoch in range(epoch_start, n_epochs + 1):
 
             # get model outputs
             #_, mse_2, img_recon, _ = model(images_cam1, images_cam2)
-            _, mse_2, img_recon, _ = model(images_cam1, images_cam2, mask_channels=[16, 31, 3])
+            _, mse_2, img_recon, _ = model(images_cam1, images_cam2, masked_channels)
             #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
             #loss = 1 - msssim
             loss = mse_2  # only final rec loss
