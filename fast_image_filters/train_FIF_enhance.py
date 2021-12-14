@@ -17,15 +17,15 @@ from fast_image_filters.temp_fif_enhance import temp_FIF_enhance
 path_to_reconstructed_images = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-GPNN/reconstructed'
 
 batch_size = 1
-lr_start = 1e-5
-epoch_patience = 8
+lr_start = 1e-4
+epoch_patience = 5
 n_epochs = 25000
 val_every = 25000
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/fast_image_filters/enhance_weights/model_best_weights.pth'
+start_from_pretrained = ''
 save_path = '/home/access/dev/iclr_17_compression/fast_image_filters/enhance_weights'
 
 ################ Data transforms ################
@@ -58,7 +58,6 @@ model = temp_FIF_enhance()
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
-#optimizer = torch.optim.SGD(model.parameters(), lr=lr_start, weight_decay=1e-8, momentum=0.9)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=epoch_patience, verbose=True)
 
 epoch_start = 1
@@ -95,7 +94,8 @@ for epoch in range(epoch_start, n_epochs + 1):
 
         optimizer.zero_grad()
 
-        recon = im_LR + model(im_LR, im_si)
+        #recon = im_LR + model(torch.cat((im_LR, im_si),1))
+        recon = model(torch.cat((im_LR, im_si), 1))
         ###SR_left = model(LR_left, HR_right, is_training=True)
 
         #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)

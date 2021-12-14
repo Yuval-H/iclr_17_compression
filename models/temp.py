@@ -230,7 +230,8 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
     def forward(self, im1, im2):
         quant_noise_feature = torch.zeros(im1.size(0), self.out_channel_N, im1.size(2) // 16,
                                           im1.size(3) // 16).cuda()
-        quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -0.5, 0.5)
+        #quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -0.5, 0.5)
+        quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -8, 8)
 
         channels = 8 # change back to 8 when done with exp
         quant_noise_feature2 = torch.zeros(im1.size(0), channels, im1.size(2) // 32, im1.size(3) // 32).cuda()
@@ -288,7 +289,8 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
             loss_l1 = nn.L1Loss()
 
             mse_loss = 0.5 * loss_l1(im1_hat.clamp(0., 1.), im1) + 0.5 * loss_l1(im2_hat.clamp(0., 1.), im2)
-            mse_on_z = loss_l1(z1_hat_hat, z1)
+            #mse_on_z = loss_l1(z1_hat_hat, torch.round(z1/16)*16)
+            mse_on_z = loss_l1(z1,z2) ## temp experiment!!!
             mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
         elif use_msssim:
             mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0, win_size=7) +

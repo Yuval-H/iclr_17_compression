@@ -55,8 +55,8 @@ save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/model_bestVal_loss0.pth'
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/masked ch 33-41, 0.125 bpp'
+start_from_pretrained = ''
+save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/try zx-zy loss'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -93,11 +93,11 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-#model = Cheng2020Attention()
+model = Cheng2020Attention()
 #model = Cheng2020Attention_highBitRate2()
 #model = Cheng2020Attention_FIF()
 #model = Cheng2020Attention_1bpp()
-model = Cheng2020Attention_0_16bpp()
+#model = Cheng2020Attention_0_16bpp()
 #model = Cheng2020Attention_freqSep()
 #model = Cheng2020Attention_smaller_Z()
 model = model.to(device)
@@ -165,7 +165,7 @@ for epoch in range(epoch_start, n_epochs + 1):
         optimizer.zero_grad()
 
         #mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)
-        mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2, masked_channels)
+        mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)#, masked_channels)
         #mse_1, mse_2, _, _ = model(images_cam1, images_cam2)
 
         #msssim = ms_ssim(images_cam1, img_recon, data_range=1.0, size_average=True, win_size=11) ## should be 11 for full size, 7 for small
@@ -179,10 +179,10 @@ for epoch in range(epoch_start, n_epochs + 1):
         #loss = 8*loss_laplacian + mse_2
 
         #loss = 1 - msssim
-        loss = mse_2    #only final rec loss
+        #loss = mse_2    #only final rec loss
         #loss = mse_1 + mse_2   #final and backbone rec loss
         #loss = mse_1 # only base loss
-        #loss = mse_1 + mse_2 + 0.5*mse_z
+        loss = mse_1 + mse_2 + mse_z
         #loss = mse_2 + 0.5 * mse_z
         loss.backward()
         optimizer.step()
@@ -229,7 +229,7 @@ for epoch in range(epoch_start, n_epochs + 1):
 
             # get model outputs
             #_, mse_2, img_recon, _ = model(images_cam1, images_cam2)
-            _, mse_2, img_recon, _ = model(images_cam1, images_cam2, masked_channels)
+            _, mse_2, img_recon, _ = model(images_cam1, images_cam2)#, masked_channels)
             #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
             #loss = 1 - msssim
             loss = mse_2  # only final rec loss

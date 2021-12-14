@@ -19,15 +19,15 @@ import pytorch_msssim
 
 from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
-save_img_and_recon_for_GPNN = False
+save_img_and_recon_for_GPNN = True
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/try train again/model_best_weights.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/masked ch 33-41, 0.125 bpp/model_bestVal_loss.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_FIF()
 #model = Cheng2020Attention_1bpp()
 #model = Cheng2020Attention_freqSep()
-#model = Cheng2020Attention_0_16bpp()
-model = Cheng2020Attention()
+model = Cheng2020Attention_0_16bpp()
+#model = Cheng2020Attention()
 #model = Cheng2020Attention_highBitRate2()
 
 
@@ -45,7 +45,7 @@ stereo2_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_
 #stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 
 # smaller dataset:
-stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
+#stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_3_OF_to_2'
 
@@ -55,8 +55,8 @@ stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multi
 
 list1 = glob.glob(os.path.join(stereo1_dir, '*11.png'))
 list2 = glob.glob(os.path.join(stereo2_dir, '*11.png'))
-#stereo1_path_list = list1 + list2
-stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
+stereo1_path_list = list1 + list2
+#stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
 #stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
 
 
@@ -119,9 +119,9 @@ for i in range(len(stereo1_path_list)):
     temp_max = np.max((temp_max, e1.max()))
 
     if save_img_and_recon_for_GPNN:
-        orig_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-GPNN/original/'
-        orig_si_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-GPNN/original SI/'
-        rec_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-GPNN/net results/'
+        orig_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-Enhance/original/'
+        orig_si_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-Enhance/original_SI/'
+        rec_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-Enhance/reconstructed/'
         orig_si_numpy = img_stereo2.permute(1, 2, 0).detach().numpy()
         orig_si_image = Image.fromarray((orig_si_numpy*255).astype(np.uint8))
         orig_image = Image.fromarray((numpy_input_image*255).astype(np.uint8))
