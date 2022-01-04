@@ -14,8 +14,8 @@ from models.temp_highBitRate import Cheng2020Attention_highBitRate2
 from models.temp_and_FIF import Cheng2020Attention_FIF
 from models.temp_1bpp import Cheng2020Attention_1bpp
 from models.temp_016bpp import Cheng2020Attention_0_16bpp
-from models.test_freqSepNet import Cheng2020Attention_freqSep
-from models.temp_smaller_spatial_dim import Cheng2020Attention_smaller_Z
+#from models.test_freqSepNet import Cheng2020Attention_freqSep
+#from models.temp_smaller_spatial_dim import Cheng2020Attention_smaller_Z
 from compressai.zoo import cheng2020_attn
 
 import kornia
