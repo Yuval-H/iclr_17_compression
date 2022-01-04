@@ -18,7 +18,7 @@ from models.temp_016bpp import Cheng2020Attention_0_16bpp
 #from models.temp_smaller_spatial_dim import Cheng2020Attention_smaller_Z
 from compressai.zoo import cheng2020_attn
 
-import kornia
+#import kornia
 
 import pytorch_msssim
 
