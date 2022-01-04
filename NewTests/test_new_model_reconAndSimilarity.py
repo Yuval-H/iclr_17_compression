@@ -19,14 +19,14 @@ import pytorch_msssim
 
 from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
-save_img_and_recon_for_GPNN = True
+save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/0_16bpp net/masked ch 33-41, 0.125 bpp/model_bestVal_loss.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/ABLATION/0.125bpp/model_best_weights.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_FIF()
-#model = Cheng2020Attention_1bpp()
+model = Cheng2020Attention_1bpp()
 #model = Cheng2020Attention_freqSep()
-model = Cheng2020Attention_0_16bpp()
+#model = Cheng2020Attention_0_16bpp()
 #model = Cheng2020Attention()
 #model = Cheng2020Attention_highBitRate2()
 
@@ -63,7 +63,7 @@ stereo1_path_list = list1 + list2
 #transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
 transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
-#transform = transforms.Compose([transforms.CenterCrop((320, 960)), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((360, 360)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.Resize((320, 960), interpolation=Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.ToTensor()])
@@ -83,7 +83,11 @@ count = 0
 temp_min = 0
 temp_max = 0
 
-#file_msssim = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/twoStepsCompression/msssim_list_KITTI_stereo_target_0.16bpp_twoStepsNet.txt',"a")
+max2_idx = 0
+max3_idx = 0
+
+
+#file_msssim = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/HoloPix50k/twoStepsCompression/msssim_list_HoloPix50k_target_0.065bpp_twoStepsNet.txt',"a")
 #file_bpp = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/twoStepsCompression/bpp_list_KITTI_stereo_target_0.125bpp_twoStepNet .txt',"a")
 
 for i in range(len(stereo1_path_list)):
@@ -91,22 +95,21 @@ for i in range(len(stereo1_path_list)):
     #img_stereo2_name = stereo1_path_list[i].replace('left', 'right')
     img_stereo2_name = stereo1_path_list[i].replace('image_2', 'image_3')
     img_stereo2 = Image.open(img_stereo2_name)
-    img_stereo1 = transform(img_stereo1)
-    img_stereo2 = transform(img_stereo2)
+    input1 = transform(img_stereo1)
+    input2 = transform(img_stereo2)
     # cut image H*W to be a multiple of 16
     M = 32
-    shape = img_stereo1.size()
-    img_stereo1 = img_stereo1[:, :M * (shape[1] // M), :M * (shape[2] // M)]
-    img_stereo2 = img_stereo2[:, :M * (shape[1] // M), :M * (shape[2] // M)]
+    shape = input1.size()
+    input1 = input1[:, :M * (shape[1] // M), :M * (shape[2] // M)]
+    input2 = input2[:, :M * (shape[1] // M), :M * (shape[2] // M)]
     ##
-    input1 = img_stereo1[None, ...].to(device)
-    input2 = img_stereo2[None, ...].to(device)
+    input1 = input1[None, ...].to(device)
+    input2 = input2[None, ...].to(device)
 
     # Encoded images:
     mse_loss, mse_on_full, final_im1_recon, z1_down = model(input1, input2)#,mask_channels=[16, 31, 3])  # try to run only with mse_on_full
-    numpy_input_image = img_stereo1.permute(1, 2, 0).detach().numpy()
-    tensor_output_image = torch.squeeze(final_im1_recon).permute(1, 2, 0)
-    numpy_output_image = tensor_output_image.cpu().detach().numpy()
+    numpy_input_image = torch.squeeze(input1).permute(1, 2, 0).cpu().detach().numpy()
+    numpy_output_image = torch.squeeze(final_im1_recon).permute(1, 2, 0).cpu().detach().numpy()
     l1 = np.mean(np.abs(numpy_input_image - numpy_output_image))
     mse = np.mean(np.square(numpy_input_image - numpy_output_image))  # * 255**2   #mse_loss.item()/2
     psnr = -20*np.log10(np.sqrt(mse))
@@ -119,10 +122,10 @@ for i in range(len(stereo1_path_list)):
     temp_max = np.max((temp_max, e1.max()))
 
     if save_img_and_recon_for_GPNN:
-        orig_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-Enhance/original/'
-        orig_si_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-Enhance/original_SI/'
-        rec_path = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-Enhance/reconstructed/'
-        orig_si_numpy = img_stereo2.permute(1, 2, 0).detach().numpy()
+        orig_path = '/media/access/SDB500GB/holopix50k/net results/0.031 bpp/original/'
+        orig_si_path = '/media/access/SDB500GB/holopix50k/net results/0.031 bpp/SI/'
+        rec_path = '/media/access/SDB500GB/holopix50k/net results/0.031 bpp/reconstructed/'
+        orig_si_numpy = torch.squeeze(input2).permute(1, 2, 0).cpu().detach().numpy()
         orig_si_image = Image.fromarray((orig_si_numpy*255).astype(np.uint8))
         orig_image = Image.fromarray((numpy_input_image*255).astype(np.uint8))
         rec_img = Image.fromarray((numpy_output_image*255).astype(np.uint8))
@@ -154,6 +157,8 @@ for i in range(len(stereo1_path_list)):
     count = count + 1
     if mse > max_mse:
         max_mse = mse
+        max3_idx = max2_idx
+        max2_idx = max_idx
         max_idx = i
     if mse < min_mse:
         min_mse = mse
@@ -211,6 +216,8 @@ if plot_best_and_worst:
     #img1_maxDist_rec = img1_maxDist
     ##
     print('the worst image is',stereo1_path_list[max_idx])
+    print(stereo1_path_list[max2_idx])
+    print(stereo1_path_list[max3_idx])
 
 
     fig, (ax1, ax2) = plt.subplots(2, 1)

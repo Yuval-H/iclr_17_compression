@@ -10,15 +10,16 @@ import pytorch_msssim
 
 from fast_image_filters.FIF_enhance_net import FIF_enhance
 from fast_image_filters.temp_fif_enhance import temp_FIF_enhance
+from fast_image_filters.final_enhance_net import finalEnhanceNet
 
 
 ############## Train parameters ##############
 
-path_to_reconstructed_images = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try-GPNN/reconstructed'
+path_to_reconstructed_images = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/try_warping/reconstructed'
 
 batch_size = 1
 lr_start = 1e-4
-epoch_patience = 5
+epoch_patience = 8
 n_epochs = 25000
 val_every = 25000
 save_every = 2000
@@ -54,7 +55,8 @@ print('Using {} device'.format(device))
 
 # Load model:
 #model = FIF_enhance()
-model = temp_FIF_enhance()
+#model = temp_FIF_enhance()
+model = finalEnhanceNet()
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
@@ -94,8 +96,8 @@ for epoch in range(epoch_start, n_epochs + 1):
 
         optimizer.zero_grad()
 
-        #recon = im_LR + model(torch.cat((im_LR, im_si),1))
-        recon = model(torch.cat((im_LR, im_si), 1))
+        recon = im_LR + model(torch.cat((im_LR, im_si),1))
+        #recon = model(torch.cat((im_LR, im_si), 1))
         ###SR_left = model(LR_left, HR_right, is_training=True)
 
         #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)

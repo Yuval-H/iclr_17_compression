@@ -292,7 +292,7 @@ class StereoDataset_FIF_enhance(Dataset):
 
         im_rec = Image.open(self.rec_path_list[idx])
         im_original = Image.open(self.rec_path_list[idx].replace('reconstructed', 'original'))
-        im_si = Image.open(self.rec_path_list[idx].replace('reconstructed', 'SI'))
+        im_si = Image.open(self.rec_path_list[idx].replace('reconstructed', 'SI_warped'))
 
         im_rec = self.transform(im_rec)
         im_original = self.transform(im_original)
@@ -300,6 +300,7 @@ class StereoDataset_FIF_enhance(Dataset):
 
         if self.randomCrop:
             i, j, h, w = transforms.RandomCrop.get_params(im_rec, output_size=(320, 1216))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(im_rec, output_size=(320, 960))  # multiplication of 32
             #i, j, h, w = transforms.RandomCrop.get_params(im_rec, output_size=(320, 320))  # multiplication of 32
             im_rec = im_rec[:, i:i + h, j:j + w]
             im_original = im_original[:, i:i + h, j:j + w]

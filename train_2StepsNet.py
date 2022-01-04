@@ -38,25 +38,27 @@ import pytorch_msssim
 #val_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
 #val_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
-stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
-stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
+#stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
+#stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
 #stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_16/image_2'
 #stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_16/image_2'
 
 #path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
 #path_holoPix_left_test = '/home/access/dev/Holopix50k/test/left'
+path_holoPix_left_train = '/home/yuvalh/holopix50k/DATA/Holopix50k/train/left'
+path_holoPix_left_test = '/home/yuvalh/holopix50k/DATA/Holopix50k/test/left'
 
-batch_size = 5
+batch_size = 7
 lr_start = 1e-4
-epoch_patience = 16
+epoch_patience = 2
 n_epochs = 25000
-val_every = 1
+val_every = 25000
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
 start_from_pretrained = ''
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/4 bit - verify/try zx-zy loss'
+save_path = ''
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -78,12 +80,12 @@ torch.cuda.manual_seed_all(1234)
 #                              transform=tsfm, crop_352_1216=False)
 #val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm_val, RandomCrop=False, crop_352_1216=False)
 
-training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=True,
-                                  RandomCrop=True, crop_352_1216=False, colorJitter=True, transform=tsfm)
-val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
+#training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=True,
+#                                  RandomCrop=True, crop_352_1216=False, colorJitter=True, transform=tsfm)
+#val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
 
-#training_data = StereoDataset_HoloPix50k(path_holoPix_left_train, RandomCrop=True, transform=tsfm)
-#val_data = StereoDataset_HoloPix50k(path_holoPix_left_test, transform=tsfm_val)
+training_data = StereoDataset_HoloPix50k(path_holoPix_left_train, RandomCrop=True, transform=tsfm)
+val_data = StereoDataset_HoloPix50k(path_holoPix_left_test, transform=tsfm_val)
 
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_data, batch_size=1)
@@ -93,10 +95,10 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-model = Cheng2020Attention()
+#model = Cheng2020Attention()
 #model = Cheng2020Attention_highBitRate2()
 #model = Cheng2020Attention_FIF()
-#model = Cheng2020Attention_1bpp()
+model = Cheng2020Attention_1bpp()
 #model = Cheng2020Attention_0_16bpp()
 #model = Cheng2020Attention_freqSep()
 #model = Cheng2020Attention_smaller_Z()
@@ -180,9 +182,9 @@ for epoch in range(epoch_start, n_epochs + 1):
 
         #loss = 1 - msssim
         #loss = mse_2    #only final rec loss
-        #loss = mse_1 + mse_2   #final and backbone rec loss
+        loss = mse_1 + mse_2   #final and backbone rec loss
         #loss = mse_1 # only base loss
-        loss = mse_1 + mse_2 + mse_z
+        #loss = mse_1 + mse_2 + 0.1*mse_z
         #loss = mse_2 + 0.5 * mse_z
         loss.backward()
         optimizer.step()
@@ -190,7 +192,7 @@ for epoch in range(epoch_start, n_epochs + 1):
 
     train_loss = train_loss / len(train_dataloader)
     # Note that step should be called after validate()
-    #scheduler.step(train_loss)
+    scheduler.step(train_loss)
     if train_loss < best_loss:
         best_loss = train_loss
 
@@ -200,7 +202,7 @@ for epoch in range(epoch_start, n_epochs + 1):
             'optimizer_state_dict': optimizer.state_dict(),
             'scheduler_state_dict': scheduler.state_dict(),
             'loss': train_loss,
-        }, save_path+'/model_best_weights.pth')
+        }, save_path+'model_best_weights.pth')
         #save_model(model, 1, save_path) #save_model(model, epoch, save_path)
     elif epoch % save_every == 0:
         #save_model(model, epoch, save_path)

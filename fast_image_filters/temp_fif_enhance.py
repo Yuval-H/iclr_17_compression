@@ -61,5 +61,5 @@ class temp_FIF_enhance(nn.Module):
 
 
 if __name__ == "__main__":
-    net = FIF_enhance().cuda()
+    net = temp_FIF_enhance().cuda()
     #summary(net, input_size=(3, 500, 500))

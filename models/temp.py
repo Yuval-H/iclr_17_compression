@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from svd_experiment.svd_utils import compose_Z_x_down_from_svd_components, decompose_i_svd_components
+
 import torch.nn as nn
 import torch
 
@@ -257,6 +259,14 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         # clamp it to 8 bits
         z1_down = torch.clamp(z1_down, -128, 128)
 
+        #####################################################
+        # Temp SVD experiment:
+        #n_svd_components = 38
+        #u, sigma, v, h, w, c = decompose_i_svd_components(z1_down, n_svd_components)
+        #z1_down_svd = compose_Z_x_down_from_svd_components(u, sigma, v, h, w, c)
+        #z1_down = z1_down_svd
+        #####################################################
+
         z1_hat = self.g_s22(z1_down)
 
         # cat z1_hat, z2 -> get z1_hat_hat
@@ -282,15 +292,15 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = True
-        use_msssim = False
+        useL1 = False
+        use_msssim = True
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()
 
             mse_loss = 0.5 * loss_l1(im1_hat.clamp(0., 1.), im1) + 0.5 * loss_l1(im2_hat.clamp(0., 1.), im2)
-            #mse_on_z = loss_l1(z1_hat_hat, torch.round(z1/16)*16)
-            mse_on_z = loss_l1(z1,z2) ## temp experiment!!!
+            mse_on_z = loss_l1(z1_hat_hat, torch.round(z1/16)*16)
+            #mse_on_z = loss_l1(z1,z2) ## temp experiment!!!
             mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
         elif use_msssim:
             mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0, win_size=7) +

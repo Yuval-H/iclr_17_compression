@@ -10,6 +10,7 @@ import numpy as np
 import pytorch_msssim
 
 from fast_image_filters.FIF_enhance_net import FIF_enhance
+from fast_image_filters.final_enhance_net import finalEnhanceNet
 
 
 
@@ -29,7 +30,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 # Load model:
-model = FIF_enhance()
+#model = FIF_enhance()
+model = finalEnhanceNet()
 model = model.to(device)
 
 checkpoint = torch.load(weights_path)
@@ -48,20 +50,20 @@ avg_psnr = 0.0
 avg_msssim = 0.0
 for batch, data in enumerate(train_dataloader):
     # Get stereo pair
-    im_rec_im_si, im_rec, HR_left = data
-    im_rec_im_si = im_rec_im_si.to(device)
-    im_rec = im_rec.to(device)
-    HR_left = HR_left.to(device)
+    im_si, im_LR, im_HR = data
+    im_si = im_si.to(device)
+    im_LR = im_LR.to(device)
+    im_HR = im_HR.to(device)
 
-    recon = im_rec + model(im_rec_im_si)
+    recon = model(torch.cat((im_LR, im_si), 1))
 
-    numpy_input_image = torch.squeeze(HR_left).cpu().permute(1, 2, 0).detach().numpy()
+    numpy_input_image = torch.squeeze(im_HR).cpu().permute(1, 2, 0).detach().numpy()
     numpy_output_image = torch.squeeze(recon).permute(1, 2, 0).cpu().detach().numpy()
     l1 = np.mean(np.abs(numpy_input_image - numpy_output_image))
     mse = np.mean(np.square(numpy_input_image - numpy_output_image))  # * 255**2   #mse_loss.item()/2
     psnr = -20 * np.log10(np.sqrt(mse))
     # msssim = ms_ssim(final_im1_recon.cpu().detach(), input1.cpu(), data_range=1.0, size_average=True, win_size=11) ## should be 11 for full size, 7 for small
-    msssim = pytorch_msssim.ms_ssim(recon, HR_left, data_range=1.0)
+    msssim = pytorch_msssim.ms_ssim(recon, im_HR, data_range=1.0)
     avg_psnr += psnr
     avg_msssim += msssim.item()
     print(psnr, msssim)
