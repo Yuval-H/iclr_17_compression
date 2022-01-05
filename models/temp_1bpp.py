@@ -160,8 +160,8 @@ class Cheng2020Attention_1bpp(nn.Module):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = True
-        use_msssim = False
+        useL1 = False
+        use_msssim = True
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()

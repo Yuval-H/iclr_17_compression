@@ -57,7 +57,7 @@ save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = ''
+start_from_pretrained = '/home/yuvalh/iclr_17_compression/model_best_weights.pth'
 save_path = ''
 
 ################ Data transforms ################

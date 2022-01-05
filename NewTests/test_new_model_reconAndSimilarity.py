@@ -21,7 +21,7 @@ from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/ABLATION/0.125bpp/model_best_weights.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/HoloPix50k/0.125bpp/model_best_weights_full_L1.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_FIF()
 model = Cheng2020Attention_1bpp()
@@ -45,7 +45,7 @@ stereo2_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_
 #stereo2_dir = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
 
 # smaller dataset:
-#stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
+stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_2'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_8/image_03'
 #stereo2_dir = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_3_OF_to_2'
 
@@ -55,15 +55,15 @@ stereo2_dir = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_
 
 list1 = glob.glob(os.path.join(stereo1_dir, '*11.png'))
 list2 = glob.glob(os.path.join(stereo2_dir, '*11.png'))
-stereo1_path_list = list1 + list2
+#stereo1_path_list = list1 + list2
 #stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
-#stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
+stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
 
 
 #transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
-transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
-#transform = transforms.Compose([transforms.CenterCrop((360, 360)), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
+transform = transforms.Compose([transforms.CenterCrop((360, 360)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.Resize((320, 960), interpolation=Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.ToTensor()])
