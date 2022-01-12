@@ -13,7 +13,8 @@ from models.temp_and_FIF import Cheng2020Attention_FIF
 from models.temp_1bpp import Cheng2020Attention_1bpp
 from models.temp_016bpp import Cheng2020Attention_0_16bpp
 from models.temp_highBitRate import Cheng2020Attention_highBitRate2
-from models.test_freqSepNet import Cheng2020Attention_freqSep
+#from models.test_freqSepNet import Cheng2020Attention_freqSep
+from models.temp_bottleneck_Att import Cheng2020Attention_1bpp_Att
 import gzip
 import pytorch_msssim
 
@@ -21,14 +22,15 @@ from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/HoloPix50k/0.125bpp/model_best_weights_full_L1.pth'
+pretrained_model_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/try_bottle_Attmodel_best_weights.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_FIF()
-model = Cheng2020Attention_1bpp()
+#model = Cheng2020Attention_1bpp()
 #model = Cheng2020Attention_freqSep()
 #model = Cheng2020Attention_0_16bpp()
 #model = Cheng2020Attention()
 #model = Cheng2020Attention_highBitRate2()
+model = Cheng2020Attention_1bpp_Att()
 
 
 if load_model_new_way:
@@ -56,14 +58,14 @@ stereo1_dir = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multi
 list1 = glob.glob(os.path.join(stereo1_dir, '*11.png'))
 list2 = glob.glob(os.path.join(stereo2_dir, '*11.png'))
 #stereo1_path_list = list1 + list2
-#stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
-stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
+stereo1_path_list = glob.glob(os.path.join(stereo1_dir, '*.png'))
+#stereo1_path_list = glob.glob(os.path.join('/home/access/dev/Holopix50k/test/left', '*.jpg'))
 
 
 #transform = transforms.Compose([transforms.Resize((192, 608), interpolation=PIL.Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((320, 320)), transforms.ToTensor()])
-#transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
-transform = transforms.Compose([transforms.CenterCrop((360, 360)), transforms.ToTensor()])
+transform = transforms.Compose([transforms.CenterCrop((320, 1224)), transforms.ToTensor()])
+#transform = transforms.Compose([transforms.CenterCrop((360, 360)), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.Resize((320, 960), interpolation=Image.BICUBIC), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.CenterCrop((370, 740)),transforms.Resize((128, 256), interpolation=3), transforms.ToTensor()])
 #transform = transforms.Compose([transforms.ToTensor()])
@@ -87,8 +89,8 @@ max2_idx = 0
 max3_idx = 0
 
 
-#file_msssim = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/HoloPix50k/twoStepsCompression/msssim_list_HoloPix50k_target_0.065bpp_twoStepsNet.txt',"a")
-#file_bpp = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/twoStepsCompression/bpp_list_KITTI_stereo_target_0.125bpp_twoStepNet .txt',"a")
+#file_msssim = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/Ablation(twoStepsCompression)/msssim_list_KITTI_stereo_target_0.16bpp_Ablation_twoStepsNet.txt',"a")
+#file_bpp = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/KITTI_stereo/Ablation(twoStepsCompression)/bpp_list_KITTI_stereo_target_0.16bpp_Ablation_twoStepNet.txt',"a")
 
 for i in range(len(stereo1_path_list)):
     img_stereo1 = Image.open(stereo1_path_list[i])
@@ -105,6 +107,10 @@ for i in range(len(stereo1_path_list)):
     ##
     input1 = input1[None, ...].to(device)
     input2 = input2[None, ...].to(device)
+
+    #temp = input1
+    #input1 = input2
+    #input2 = temp
 
     # Encoded images:
     mse_loss, mse_on_full, final_im1_recon, z1_down = model(input1, input2)#,mask_channels=[16, 31, 3])  # try to run only with mse_on_full
@@ -146,6 +152,7 @@ for i in range(len(stereo1_path_list)):
     bpp = n_bits/n_pixel
 
     #file_msssim.write(str(msssim.item()) + '\n')
+    #file_bpp.write('0.16' + '\n')
     #file_bpp.write(str(bpp) + '\n')
 
     print(psnr, msssim, bpp)

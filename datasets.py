@@ -250,8 +250,8 @@ class StereoDataset_new(Dataset):
 
         if self.RandomCrop:
             #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(352, 1216))  # multiplication of 32
-            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))  # multiplication of 32
-            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(128, 320))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))  # multiplication of 32
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 1224))  # multiplication of 32
             #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 960))  # multiplication of 32
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
@@ -270,11 +270,15 @@ class StereoDataset_new(Dataset):
             img_stereo1 = torch.tensor(img_stereo1.copy()).permute(2, 0, 1)
             img_stereo2 = torch.tensor(img_stereo2.copy()).permute(2, 0, 1)
 
+        # switch between left and right image
+        #if torch.rand(1) > 0.5:
+        #    return img_stereo2, img_stereo1
+        #else:
+        #    return img_stereo1, img_stereo2
 
 
-        return img_stereo1, img_stereo2
 
-####
+
 ###################################################
 class StereoDataset_FIF_enhance(Dataset):
     def __init__(self, path_to_reconstructed_images, transform=transforms.ToTensor(), randomCrop=False):

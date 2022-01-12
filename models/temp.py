@@ -270,9 +270,9 @@ class Cheng2020Attention(nn.Module): #(Cheng2020Anchor):
         z1_hat = self.g_s22(z1_down)
 
         # cat z1_hat, z2 -> get z1_hat_hat
-        z_cat = torch.cat((z1_hat, z2), 1)
+        #z_cat = torch.cat((z1_hat, z2), 1)
         #z_cat = torch.cat((torch.zeros_like(z1_hat), z2), 1)
-        #z_cat = torch.cat((z1_hat, torch.zeros_like(z2)), 1)
+        z_cat = torch.cat((z1_hat, torch.zeros_like(z2)), 1)
         try_expanded_G_Z = False
         if try_expanded_G_Z:
             z1_hat_hat = self.g_z1hat_z2_tryExpand(z_cat)
