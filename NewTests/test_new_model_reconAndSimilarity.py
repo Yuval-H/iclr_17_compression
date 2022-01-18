@@ -22,15 +22,15 @@ from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/model_best_weights_fullL1.pth'
+pretrained_model_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/1bpp net (0.125bpp)/model_bestVal_loss0_maybe_not_fully.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_FIF()
-#model = Cheng2020Attention_1bpp()
+model = Cheng2020Attention_1bpp()
 #model = Cheng2020Attention_freqSep()
 #model = Cheng2020Attention_0_16bpp()
 #model = Cheng2020Attention()
 #model = Cheng2020Attention_highBitRate2()
-model = Cheng2020Attention_1bpp_Att()
+#model = Cheng2020Attention_1bpp_Att()
 
 
 if load_model_new_way:
@@ -89,8 +89,8 @@ max2_idx = 0
 max3_idx = 0
 
 
-file_msssim = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/HoloPix50k/twoStepsCompression/msssim_list_HoloPix50k_target_0.125bpp_twoStepsNet.txt',"a")
-file_bpp = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/HoloPix50k/twoStepsCompression/bpp_list_HoloPix50k_target_0.125bpp_twoStepNet.txt',"a")
+#file_msssim = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/HoloPix50k/twoStepsCompression/msssim_list_HoloPix50k_target_0.125bpp_twoStepsNet.txt',"a")
+#file_bpp = open('/home/access/dev/DSIN/sharons code/ToSend/images/5.values_list/HoloPix50k/twoStepsCompression/bpp_list_HoloPix50k_target_0.125bpp_twoStepNet.txt',"a")
 
 for i in range(len(stereo1_path_list)):
     img_stereo1 = Image.open(stereo1_path_list[i])
@@ -151,8 +151,8 @@ for i in range(len(stereo1_path_list)):
     n_pixel = numpy_input_image.shape[0]*numpy_input_image.shape[1]
     bpp = n_bits/n_pixel
 
-    file_msssim.write(str(msssim.item()) + '\n')
-    file_bpp.write('0.125' + '\n')
+    #file_msssim.write(str(msssim.item()) + '\n')
+    #file_bpp.write('0.125' + '\n')
     #file_bpp.write(str(bpp) + '\n')
 
     print(psnr, msssim, bpp)
@@ -171,8 +171,8 @@ for i in range(len(stereo1_path_list)):
         min_mse = mse
         min_idx = i
 
-file_msssim.close()
-file_bpp.close()
+#file_msssim.close()
+#file_bpp.close()
 
 avg_bpp = avg_bpp / count
 avg_mse = avg_mse / count

@@ -10,6 +10,7 @@ from model_new import *
 #from model import *
 from model_small import ImageCompressor_small
 from models.temp import Cheng2020Attention
+from models.temp_att_0_03bpp import Cheng2020Attention_ATT
 from models.temp_highBitRate import Cheng2020Attention_highBitRate2
 from models.temp_and_FIF import Cheng2020Attention_FIF
 from models.temp_1bpp import Cheng2020Attention_1bpp
@@ -59,8 +60,8 @@ save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/model_best_weights_fullL1.pth'
-save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/'
+start_from_pretrained = ''
+save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/0.031bpp/'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -97,8 +98,9 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-model = Cheng2020Attention_1bpp_Att()
+#model = Cheng2020Attention_1bpp_Att()
 #model = Cheng2020Attention()
+model = Cheng2020Attention_ATT()
 #model = Cheng2020Attention_highBitRate2()
 #model = Cheng2020Attention_FIF()
 #model = Cheng2020Attention_1bpp()

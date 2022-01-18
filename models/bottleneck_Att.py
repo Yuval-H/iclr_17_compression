@@ -34,13 +34,13 @@ class BottleneckAttention(nn.Module):
         # [batch (heads*3*dim_head) height width]
         qkv = torch.cat((q, k, v), 1)
         # decompose heads and merge spatial dims as tokens
-        q, k, v = tuple(rearrange(qkv, 'b (d k h ) x y  -> k b h (x y) d', k=3, h=self.heads))
+        q, k, v = tuple((rearrange(qkv, 'b (k d) h w  -> k b (h w) d', k=3)))  #tuple(rearrange(qkv, 'b (d k H ) h w  -> k b H (h w) d', k=3, H=self.heads))
 
         # i, j refer to tokens
-        dot_prod = einsum('b h i d, b h j d -> b h i j', q, k) * self.scale
+        dot_prod = einsum('b i d, b j d -> b i j', q, k) * self.scale #einsum('b h i d, b h j d -> b h i j', q, k) * self.scale
 
         attention = torch.softmax(dot_prod, dim=-1)
-        out = einsum('b h i j, b h j d -> b h i d', attention, v)
+        out = einsum('b i j, b j d -> b i d', attention, v) #einsum('b h i j, b h j d -> b h i d', attention, v)
         # Merge heads and decompose tokens to spatial dims
-        out = rearrange(out, 'b h (x y) d -> b (h d) x y', x=self.height, y=self.width)
+        out = rearrange(out, 'b (x y) d -> b d x y', x=self.height, y=self.width) #rearrange(out, 'b h (x y) d -> b (h d) x y', x=self.height, y=self.width)
         return out
