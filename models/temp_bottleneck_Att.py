@@ -1,4 +1,3 @@
-from self_attention_cv.bottleneck_transformer import BottleneckBlock, BottleneckAttention
 import torch
 
 import torch.nn as nn
@@ -6,6 +5,7 @@ import torch
 
 import pytorch_msssim
 
+from models.bottleneck_Att import BottleneckAttention
 from compressai.layers import (
     AttentionBlock,
     ResidualBlock,
@@ -14,10 +14,6 @@ from compressai.layers import (
     conv3x3,
     subpel_conv3x3,
 )
-
-
-
-
 
 
 
@@ -31,12 +27,12 @@ class Cheng2020Attention_1bpp_Att(nn.Module):
         self.use_another_net_on_recon = False
         self.out_channel_N = N
 
-        #self.bottleneck_block = BottleneckBlock(in_channels=256, fmap_size=(20, 76), heads=1, out_channels=128,
-        #                           content_positional_embedding=False, pooling=False)
 
-        self.bot_mhsa = nn.Sequential(
-            BottleneckAttention(dim=256, fmap_size=(20, 76), heads=1, dim_head=256, content_positional_embedding=False),
-            ResidualBlock(2*N, N))
+        self.bot_mhsa = BottleneckAttention(dim=128, fmap_size=(20, 76), heads=1, dim_head=128)
+        self.final_conv = nn.Sequential(
+            AttentionBlock(2*N),
+            ResidualBlock(2*N, N)
+        )
 
         self.g_a = nn.Sequential(
             ResidualBlock(3, 3),
@@ -124,15 +120,16 @@ class Cheng2020Attention_1bpp_Att(nn.Module):
         z1_hat = self.g_s22(z1_down)
 
         # cat z1_hat, z2 -> get z1_hat_hat
-        z_cat = torch.cat((z1_hat, z2), 1)
+        #z_cat = torch.cat((z1_hat, z2), 1)
         #z_cat = torch.cat((torch.zeros_like(z1_hat), z2), 1)
         #z_cat = torch.cat((z1_hat, torch.zeros_like(z2)), 1)
-        try_bottle_Att = True
-        if try_bottle_Att:
-            #z1_hat_hat = self.bottleneck_block(z_cat)
-            z1_hat_hat = self.bot_mhsa(z_cat)
-        else:
-            z1_hat_hat = self.g_z1hat_z2(z_cat)
+
+        # take conv with the z2 (not in attention way)
+        z1_hat_hat = self.g_z1hat_z2(torch.cat((z1_hat, z2), 1))
+        # Attention (z2 features are the Values)
+        z1_att_z2 = self.bot_mhsa(z1_hat_hat, z2)
+        # Take again z1_hat values into account
+        z1_hat_hat = self.final_conv(torch.cat((z1_hat_hat, z1_att_z2), 1))
 
         # recon images
         final_im1_recon = self.g_s(z1_hat_hat)
@@ -147,8 +144,8 @@ class Cheng2020Attention_1bpp_Att(nn.Module):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = True
-        use_msssim = False
+        useL1 = False
+        use_msssim = True
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()
@@ -157,7 +154,7 @@ class Cheng2020Attention_1bpp_Att(nn.Module):
             mse_on_z = loss_l1(z1_hat_hat, z1)
             mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
         elif use_msssim:
-            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0) +
+            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim(im1_hat.clamp(0., 1.), im1, data_range=1.0) +
                             pytorch_msssim.ms_ssim(im2_hat.clamp(0., 1.), im2, data_range=1.0)))
             mse_on_z = 1
             mse_on_full = 1 - pytorch_msssim.ms_ssim(final_im1_recon.clamp(0., 1.), im1, data_range=1.0)

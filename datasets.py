@@ -275,6 +275,7 @@ class StereoDataset_new(Dataset):
         #    return img_stereo2, img_stereo1
         #else:
         #    return img_stereo1, img_stereo2
+        return img_stereo1, img_stereo2
 
 
 

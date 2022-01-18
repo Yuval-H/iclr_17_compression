@@ -46,7 +46,7 @@ class Cheng2020Attention_1bpp(nn.Module):
 
     """
 
-    def __init__(self, N=128, **kwargs):
+    def __init__(self, N=128, **kwargs): ## return to 128
         #super().__init__(N=N, **kwargs)
         super().__init__()
 
@@ -160,8 +160,8 @@ class Cheng2020Attention_1bpp(nn.Module):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = False
-        use_msssim = True
+        useL1 = True
+        use_msssim = False
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()

@@ -59,8 +59,8 @@ save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = ''
-save_path = '/home/access/dev/iclr_17_compression/checkpoints_new/new_net/Sharons dataset/try_bottle_Att'
+start_from_pretrained = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/model_best_weights_fullL1.pth'
+save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
