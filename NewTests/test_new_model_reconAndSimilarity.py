@@ -10,6 +10,7 @@ from model_new import *
 from model import *
 from models.temp import Cheng2020Attention
 from models.temp_and_FIF import Cheng2020Attention_FIF
+from models.temp_att_0_03bpp import Cheng2020Attention_ATT
 from models.temp_1bpp import Cheng2020Attention_1bpp
 from models.temp_016bpp import Cheng2020Attention_0_16bpp
 from models.temp_highBitRate import Cheng2020Attention_highBitRate2
@@ -22,10 +23,11 @@ from utils.Conditional_Entropy import compute_conditional_entropy
 #/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow
 save_img_and_recon_for_GPNN = False
 load_model_new_way = True
-pretrained_model_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/1bpp net (0.125bpp)/model_bestVal_loss0_maybe_not_fully.pth'
+pretrained_model_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/1bpp net (0.125bpp)/model_bestVal_loss_fullMSSSIM.pth'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #model = Cheng2020Attention_FIF()
 model = Cheng2020Attention_1bpp()
+#model = Cheng2020Attention_ATT()
 #model = Cheng2020Attention_freqSep()
 #model = Cheng2020Attention_0_16bpp()
 #model = Cheng2020Attention()

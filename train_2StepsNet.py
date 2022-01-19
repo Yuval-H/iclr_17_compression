@@ -98,9 +98,9 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-#model = Cheng2020Attention_1bpp_Att()
+model = Cheng2020Attention_1bpp_Att()
 #model = Cheng2020Attention()
-model = Cheng2020Attention_ATT()
+#model = Cheng2020Attention_ATT()
 #model = Cheng2020Attention_highBitRate2()
 #model = Cheng2020Attention_FIF()
 #model = Cheng2020Attention_1bpp()

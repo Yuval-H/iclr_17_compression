@@ -188,8 +188,8 @@ class Cheng2020Attention_ATT(nn.Module):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = True
-        use_msssim = False
+        useL1 = False
+        use_msssim = True
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()
@@ -199,10 +199,10 @@ class Cheng2020Attention_ATT(nn.Module):
             #mse_on_z = loss_l1(z1,z2) ## temp experiment!!!
             mse_on_full = loss_l1(final_im1_recon.clamp(0., 1.), im1)
         elif use_msssim:
-            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0, win_size=7) +
-                            pytorch_msssim.ms_ssim(im2_hat.clamp(0., 1.), im2, data_range=1.0, win_size=7)))
+            mse_loss = 1 - (0.5*(pytorch_msssim.ms_ssim( final_im1_recon.clamp(0., 1.), im1, data_range=1.0) +
+                            pytorch_msssim.ms_ssim(im2_hat.clamp(0., 1.), im2, data_range=1.0)))
             mse_on_z = 1
-            mse_on_full = 1 - pytorch_msssim.ms_ssim(final_im1_recon.clamp(0., 1.), im1, data_range=1.0, win_size=7)
+            mse_on_full = 1 - pytorch_msssim.ms_ssim(final_im1_recon.clamp(0., 1.), im1, data_range=1.0)
         else:
             mse_loss = 0.5*torch.mean((im1_hat.clamp(0., 1.) - im1).pow(2)) + 0.5*torch.mean((im2_hat.clamp(0., 1.) - im2).pow(2))
             mse_on_z = torch.mean((z1_hat_hat - z1).pow(2))

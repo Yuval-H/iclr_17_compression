@@ -5,7 +5,7 @@ import torch
 
 import pytorch_msssim
 
-from models.bottleneck_Att import BottleneckAttention
+from models.bottleneck_Att import BottleneckAttention, BottleneckAttention_modified
 from compressai.layers import (
     AttentionBlock,
     ResidualBlock,
@@ -28,9 +28,10 @@ class Cheng2020Attention_1bpp_Att(nn.Module):
         self.out_channel_N = N
 
 
-        self.bot_mhsa = BottleneckAttention(dim=128, fmap_size=(20, 76), heads=1, dim_head=128)
+        self.bot_mhsa = BottleneckAttention_modified(dim=128,fmap_size =(20, 76) ) #BottleneckAttention(dim=128, fmap_size=(20, 76), heads=1, dim_head=128)
         self.final_conv = nn.Sequential(
             AttentionBlock(2*N),
+            ResidualBlock(2*N, 2*N),
             ResidualBlock(2*N, N)
         )
 
@@ -144,8 +145,8 @@ class Cheng2020Attention_1bpp_Att(nn.Module):
         im2_hat = self.g_s(compressed_z2)
 
         # distortion
-        useL1 = False
-        use_msssim = True
+        useL1 = True
+        use_msssim = False
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()
