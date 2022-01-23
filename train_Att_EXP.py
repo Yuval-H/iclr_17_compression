@@ -8,16 +8,8 @@ import torchvision
 from losses import *
 from model_new import *
 #from model import *
-from model_small import ImageCompressor_small
-from models.temp import Cheng2020Attention
-from models.temp_att_0_03bpp import Cheng2020Attention_ATT
-from models.temp_highBitRate import Cheng2020Attention_highBitRate2
-from models.temp_and_FIF import Cheng2020Attention_FIF
-from models.temp_1bpp import Cheng2020Attention_1bpp
-from models.temp_016bpp import Cheng2020Attention_0_16bpp
-from models.temp_bottleneck_Att import Cheng2020Attention_1bpp_Att
-#from models.test_freqSepNet import Cheng2020Attention_freqSep
-#from models.temp_smaller_spatial_dim import Cheng2020Attention_smaller_Z
+from models.bottleneck_Att import BottleneckAttention_modified
+
 from compressai.zoo import cheng2020_attn
 
 #import kornia
@@ -25,25 +17,14 @@ from compressai.zoo import cheng2020_attn
 import pytorch_msssim
 
 
-############## Train parameters ##############
-#train_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
-#train_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
-#train_folder1 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
-#train_folder2 = '/home/access/dev/data_sets/CLIC2021/professional_train_2020/train'
-#train_folder1 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/training/image_2'
-#train_folder2 = '/home/access/dev/data_sets/kitti/data_stereo_flow_multiview/training/image_3'
 
-#train_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_2'
-#train_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/training/image_3'
-#val_folder1 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_2'
-#val_folder2 = '/home/access/dev/data_sets/kitti/flow_2015/data_scene_flow/testing/image_3'
 #val_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
 #val_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
-stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
-stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
-#stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/image_2'
-#stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/image_2'
+#stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
+#stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
+stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/image_2'
+stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/image_2'
 
 
 #path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
@@ -52,16 +33,14 @@ stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/d
 #path_holoPix_left_test = '/home/yuvalh/holopix50k/DATA/Holopix50k/test/left'
 
 batch_size = 1
-lr_start = 1e-5
-epoch_patience = 8
+lr_start = 1e-4
+epoch_patience = 40
 n_epochs = 25000
 val_every = 25000
 save_every = 2000
-using_blank_loss = False
-hammingLossOnBinaryZ = False
-useStereoPlusDataSet = False
-start_from_pretrained = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/0.125bpp/model_best_weights_without_conv.pth'
-save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/0.125bpp/'
+
+start_from_pretrained = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/att_net/model_best_weights1.pth'
+save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/att_net/'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -83,8 +62,8 @@ torch.cuda.manual_seed_all(1234)
 #                              transform=tsfm, crop_352_1216=False)
 #val_data = StereoDataset(stereo1_dir=val_folder1, stereo2_dir=val_folder2, transform=tsfm_val, RandomCrop=False, crop_352_1216=False)
 
-training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=True,
-                                  RandomCrop=True, crop_352_1216=False, colorJitter=True, transform=tsfm)
+training_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=False,
+                                  RandomCrop=True, crop_352_1216=False, colorJitter=False, transform=tsfm)
 val_data = StereoDataset_new(stereo_dir_2012, stereo_dir_2015, isTrainingData=False, transform=tsfm_val)
 
 #training_data = StereoDataset_HoloPix50k(path_holoPix_left_train, RandomCrop=True, transform=tsfm)
@@ -98,19 +77,10 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-model = Cheng2020Attention_1bpp_Att()
-#model = Cheng2020Attention()
-#model = Cheng2020Attention_ATT()
-#model = Cheng2020Attention_highBitRate2()
-#model = Cheng2020Attention_FIF()
-#model = Cheng2020Attention_1bpp()
-#model = Cheng2020Attention_0_16bpp()
-#model = Cheng2020Attention_freqSep()
-#model = Cheng2020Attention_smaller_Z()
+model = BottleneckAttention_modified(dim=3, dim_head=256)
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
-#optimizer = torch.optim.SGD(model.parameters(), lr=lr_start, weight_decay=1e-8, momentum=0.9)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=epoch_patience, verbose=True)
 
 epoch_start = 1
@@ -124,21 +94,6 @@ if start_from_pretrained != '':
     #loss = checkpoint['loss']
 
 model.train()
-'''
-freez2_base_autoencoder = True
-if freez2_base_autoencoder:
-    for param in model.g_a.parameters():
-        param.requires_grad = False
-    for param in model.g_s.parameters():
-        param.requires_grad = False
-    for param in model.g_a22.parameters():
-        param.requires_grad = False
-    for param in model.g_s22.parameters():
-        param.requires_grad = False
-    for param in model.g_z1hat_z2.parameters():
-        param.requires_grad = False
-'''
-
 
 # todo: check with & without
 #clipping_value = 5.0
@@ -148,9 +103,6 @@ lossL1 = nn.L1Loss()
 # Epochs
 best_loss = 10000
 best_val_loss = 10000
-
-masked_channels = [32,33,34,35,36,37,38,39,40]
-
 
 for epoch in range(epoch_start, n_epochs + 1):
     # monitor training loss
@@ -172,25 +124,11 @@ for epoch in range(epoch_start, n_epochs + 1):
         optimizer.zero_grad()
 
         #mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)
-        mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)#, masked_channels)
-        #mse_1, mse_2, _, _ = model(images_cam1, images_cam2)
+        im1_from_im2 = model(images_cam1, images_cam2, images_cam2)#, masked_channels)
 
-        #msssim = ms_ssim(images_cam1, img_recon, data_range=1.0, size_average=True, win_size=11) ## should be 11 for full size, 7 for small
-        #msssim = pytorch_msssim.ms_ssim(images_cam1, img_recon, data_range=1.0)
+        loss = lossL1(images_cam1, im1_from_im2)
+        #loss = 1 - pytorch_msssim.ms_ssim(im1_from_im2.clamp(0., 1.), images_cam1, data_range=1.0)
 
-        #if not msssim == msssim:
-        #    print('nan value')
-
-        #loss_laplacian = lossL1(kornia.filters.laplacian(img_recon, 3), kornia.filters.laplacian(images_cam1, 3))
-
-        #loss = 8*loss_laplacian + mse_2
-
-        #loss = 1 - msssim
-        #loss = mse_2    #only final rec loss
-        loss = mse_1 + mse_2   #final and backbone rec loss
-        #loss = mse_1 # only base loss
-        #loss = mse_1 + mse_2 + 0.1*mse_z
-        #loss = mse_2 + 0.5 * mse_z
         loss.backward()
         optimizer.step()
         train_loss += loss.item() #* images_cam1.size(0)

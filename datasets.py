@@ -213,10 +213,10 @@ class StereoDataset_new(Dataset):
             transform (optional): Optional transform to be applied on the images.
         """
         subFolder = 'training' if isTrainingData else 'testing'
-        stereo2012_dir = os.path.join(stereo_dir_2012, subFolder, 'image_2')
-        stereo2015_dir = os.path.join(stereo_dir_2015, subFolder, 'image_2')
-        #stereo2012_dir = stereo_dir_2012
-        #stereo2015_dir = stereo_dir_2015
+        #stereo2012_dir = os.path.join(stereo_dir_2012, subFolder, 'image_2')
+        #stereo2015_dir = os.path.join(stereo_dir_2015, subFolder, 'image_2')
+        stereo2012_dir = stereo_dir_2012
+        stereo2015_dir = stereo_dir_2015
         if isTrainingData:
             stereo2012_path_list = glob.glob(os.path.join(stereo2012_dir, '*png'))
             stereo2015_path_list = glob.glob(os.path.join(stereo2015_dir, '*png'))

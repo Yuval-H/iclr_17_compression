@@ -28,7 +28,7 @@ class Cheng2020Attention_1bpp_Att(nn.Module):
         self.out_channel_N = N
 
 
-        self.bot_mhsa = BottleneckAttention_modified(dim=128,fmap_size =(20, 76) ) #BottleneckAttention(dim=128, fmap_size=(20, 76), heads=1, dim_head=128)
+        self.bot_mhsa = BottleneckAttention_modified(dim=128) #BottleneckAttention(dim=128, fmap_size=(20, 76), heads=1, dim_head=128)
         self.final_conv = nn.Sequential(
             AttentionBlock(2*N),
             ResidualBlock(2*N, 2*N),
@@ -146,7 +146,7 @@ class Cheng2020Attention_1bpp_Att(nn.Module):
 
         # distortion
         useL1 = True
-        use_msssim = False
+        use_msssim = True
         if useL1:
             #loss = torch.mean(torch.sqrt((diff * diff)
             loss_l1 = nn.L1Loss()

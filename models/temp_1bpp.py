@@ -159,6 +159,15 @@ class Cheng2020Attention_1bpp(nn.Module):
         im1_hat = self.g_s(compressed_z1)
         im2_hat = self.g_s(compressed_z2)
 
+
+        ##############
+        #from models.bottleneck_Att import BottleneckAttention_modified
+        #att = BottleneckAttention_modified(dim=128)
+        #im = att(z1, z2, im2)
+        #im = torch.squeeze(im).permute(1, 2, 0).cpu().detach().numpy()
+        #import matplotlib.pyplot as plt
+        #plt.imshow(im)
+        ##############
         # distortion
         useL1 = True
         use_msssim = False
