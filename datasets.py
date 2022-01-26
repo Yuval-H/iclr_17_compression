@@ -213,10 +213,10 @@ class StereoDataset_new(Dataset):
             transform (optional): Optional transform to be applied on the images.
         """
         subFolder = 'training' if isTrainingData else 'testing'
-        #stereo2012_dir = os.path.join(stereo_dir_2012, subFolder, 'image_2')
-        #stereo2015_dir = os.path.join(stereo_dir_2015, subFolder, 'image_2')
-        stereo2012_dir = stereo_dir_2012
-        stereo2015_dir = stereo_dir_2015
+        stereo2012_dir = os.path.join(stereo_dir_2012, subFolder, 'image_2')
+        stereo2015_dir = os.path.join(stereo_dir_2015, subFolder, 'image_2')
+        #stereo2012_dir = stereo_dir_2012
+        #stereo2015_dir = stereo_dir_2015
         if isTrainingData:
             stereo2012_path_list = glob.glob(os.path.join(stereo2012_dir, '*png'))
             stereo2015_path_list = glob.glob(os.path.join(stereo2015_dir, '*png'))
@@ -251,8 +251,8 @@ class StereoDataset_new(Dataset):
         if self.RandomCrop:
             #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(352, 1216))  # multiplication of 32
             #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 320))  # multiplication of 32
-            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 1224))  # multiplication of 32
-            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 960))  # multiplication of 32
+            #i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(320, 1224))  # multiplication of 32
+            i, j, h, w = transforms.RandomCrop.get_params(img_stereo1, output_size=(315, 1215))  # multiplication of 32
             img_stereo1 = img_stereo1[:, i:i+h, j:j+w]
             img_stereo2 = img_stereo2[:, i:i+h, j:j+w]
 

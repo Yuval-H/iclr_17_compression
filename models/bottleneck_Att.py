@@ -54,7 +54,37 @@ class BottleneckAttention(nn.Module):
         out = rearrange(out, 'b (x y) d -> b d x y', x=self.height, y=self.width) #rearrange(out, 'b h (x y) d -> b (h d) x y', x=self.height, y=self.width)
         return out
 
+class ResidualBlock_3_3(nn.Module):
+    """Simple residual block with 3x3, 1*1 convolutions.
 
+    Args:
+        in_ch (int): number of input channels
+        out_ch (int): number of output channels
+    """
+
+    def __init__(self, in_ch: int, out_ch: int, stride=1):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=stride)
+        self.leaky_relu = nn.LeakyReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=1, stride=1)
+        #if in_ch != out_ch:
+        #    self.skip = nn.Conv2d(in_ch, out_ch, kernel_size=1, stride=1)
+        #else:
+        #    self.skip = None
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.leaky_relu(out)
+        out = self.conv2(out)
+        out = self.leaky_relu(out)
+
+        #if self.skip is not None:
+        #    identity = self.skip(x)
+
+        #out = out + identity
+        return out
 
 class BottleneckAttention_modified(nn.Module):
     def __init__(
@@ -66,24 +96,19 @@ class BottleneckAttention_modified(nn.Module):
         self.dim_head = dim if dim_head is None else dim_head
         self.dim = dim
         self.scale = self.dim_head ** -0.5
+        self.to_q = nn.Sequential(nn.Conv2d(dim, self.dim_head, 1), nn.LeakyReLU(),  nn.Conv2d(self.dim_head, self.dim_head, 1),nn.LeakyReLU())
+        self.to_k = nn.Sequential(nn.Conv2d(dim, self.dim_head, 1), nn.LeakyReLU(),  nn.Conv2d(self.dim_head, self.dim_head, 1),nn.LeakyReLU())
         #self.to_q = nn.Conv2d(dim, self.dim_head, kernel_size=(16, 16), stride=(16, 16))
         #self.to_k = nn.Conv2d(dim, self.dim_head, kernel_size=(16, 16), stride=(16, 16))
 
-        N = self.dim_head
-        self.to_q = nn.Sequential(
-            ResidualBlock(3, 3),
-            ResidualBlockWithStride(3, N, stride=2),
-            ResidualBlockWithStride(N, N, stride=2),
-            ResidualBlockWithStride(N, N, stride=2),
-            ResidualBlockWithStride(N, N, stride=2)
-        )
-        self.to_k = nn.Sequential(
-            ResidualBlock(3, 3),
-            ResidualBlockWithStride(3, N, stride=2),
-            ResidualBlockWithStride(N, N, stride=2),
-            ResidualBlockWithStride(N, N, stride=2),
-            ResidualBlockWithStride(N, N, stride=2)
-        )
+        #self.to_base_tokens = nn.Sequential(ResidualBlock_3_3(dim, self.dim_head),
+        #                                    ResidualBlock_3_3(self.dim_head, self.dim_head),
+        #                                    ResidualBlock_3_3(self.dim_head, self.dim_head))
+
+        #self.to_q = ResidualBlock_3_3(self.dim_head, self.dim_head, stride=9)#nn.Conv2d(self.dim_head, self.dim_head, kernel_size=3, stride=9)
+
+        #self.to_k = ResidualBlock_3_3(self.dim_head, self.dim_head, stride=4)#nn.Conv2d(self.dim_head, self.dim_head, kernel_size=3, stride=4)
+
 
 
 
@@ -91,8 +116,10 @@ class BottleneckAttention_modified(nn.Module):
     def forward(self, Q, K, V):
         assert Q.dim() == 4, f'Expected 4D tensor, got {Q.dim()}D tensor'
 
-        q = self.to_q(Q)
-        k = self.to_q(K)
+        # non overlapping 9*9
+        q = self.to_q(Q)#self.to_q(self.to_base_tokens(Q))
+        # overlapping 9*9 with stride=4
+        k = self.to_k(K)#self.to_k(self.to_base_tokens(K))
         v = V
         # [batch (3*dim_head) height width]
         #qkv = torch.cat((q, k, v), 1)
@@ -120,7 +147,7 @@ class BottleneckAttention_modified(nn.Module):
         q = rearrange(patches, 'p c h w  -> p (c h w)')
         # K and V, choose patch size and stride (overlapping is an option)
         #kc, kh, kw = 1, 10, 38#self.dim_head, 40, 76
-        dc, dh, dw = 128,1,1#self.dim_head, 4, 8
+        dc, dh, dw = 1,1,1#self.dim_head, 4, 8
         # K
         #x = k
         #k = F.pad(x, (x.size(2) % kw // 2, x.size(2) % kw // 2,
@@ -130,8 +157,8 @@ class BottleneckAttention_modified(nn.Module):
         patches = patches.contiguous().view(-1, kc, kh, kw)
         k = rearrange(patches, 'p c h w  -> p (c h w)')
         # V
-        kc, kh, kw = 3, 16, 16#self.dim, 40, 76
-        dc, dh, dw = 3,16,16#self.dim, 4, 8
+        kc, kh, kw = 3, 9, 9#self.dim, 40, 76
+        dc, dh, dw = 3,4,4#self.dim, 4, 8
         #x = v
         #v = F.pad(x, (x.size(2) % kw // 2, x.size(2) % kw // 2,
         #              x.size(1) % kh // 2, x.size(1) % kh // 2,
@@ -142,11 +169,15 @@ class BottleneckAttention_modified(nn.Module):
         unfold_shape[2:4] = unfold_shape_q[2:4]
         patches = patches.contiguous().view(-1, kc, kh, kw)
         v = rearrange(patches, 'p c h w  -> p (c h w)')
+        # clear patches memory
+        patches = 0
 
 
         k_transpose = torch.transpose(k, 0, 1)
         # dot product. attention are of size [(h*w) (h*w)] -> ~ each feature of z1_hat with respect to z2
-        dot_prod = torch.matmul(q, k_transpose) * (k_transpose.size()[0] ** -1)#self.scale
+        dot_prod = torch.matmul(q, k_transpose) * (k_transpose.size()[0] ** -1) #self.scale
+        ####attention = F.normalize(dot_prod, p=2, dim=-1)
+        ####attention = attention.pow(2)
         attention = torch.softmax(dot_prod, dim=-1)
         # out, [(h*w) dim]
         out = torch.matmul(attention, v)

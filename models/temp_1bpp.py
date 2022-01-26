@@ -107,7 +107,7 @@ class Cheng2020Attention_1bpp(nn.Module):
         )
 
 
-    def forward(self, im1, im2):
+    def forward(self, im1, im2, returnZ1Z2=False):
         quant_noise_feature = torch.zeros(im1.size(0), self.out_channel_N, im1.size(2) // 16,
                                           im1.size(3) // 16).cuda()
         quant_noise_feature = torch.nn.init.uniform_(torch.zeros_like(quant_noise_feature), -8, 8)
@@ -118,6 +118,8 @@ class Cheng2020Attention_1bpp(nn.Module):
 
         z1 = self.g_a(im1)
         z2 = self.g_a(im2)
+        if returnZ1Z2:
+            return z1, z2
         if self.training:
             compressed_z1 = z1 + quant_noise_feature
             compressed_z2 = z2 + quant_noise_feature

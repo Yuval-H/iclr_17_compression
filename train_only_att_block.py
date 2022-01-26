@@ -9,12 +9,20 @@ from losses import *
 from model_new import *
 #from model import *
 from models.bottleneck_Att import BottleneckAttention_modified
+from models.temp_1bpp import Cheng2020Attention_1bpp
 
-from compressai.zoo import cheng2020_attn
 
-#import kornia
 
-import pytorch_msssim
+pretrained_model_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/1bpp net (0.125bpp)/model_bestVal_loss_fullMSSSIM.pth'
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+model_original = Cheng2020Attention_1bpp()
+
+checkpoint = torch.load(pretrained_model_path)
+model_original.load_state_dict(checkpoint['model_state_dict'])
+model_original.to(device)
+model_original.eval()
+
 
 
 
@@ -31,7 +39,7 @@ stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/d
 #path_holoPix_left_test = '/home/access/dev/Holopix50k/test/left'
 #path_holoPix_left_train = '/home/yuvalh/holopix50k/DATA/Holopix50k/train/left'
 #path_holoPix_left_test = '/home/yuvalh/holopix50k/DATA/Holopix50k/test/left'
-test_model = True
+test_model = False
 batch_size = 1
 lr_start = 1e-4
 epoch_patience = 16
@@ -40,7 +48,7 @@ val_every = 25000
 save_every = 2000
 
 start_from_pretrained = ''
-save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/att_net/'
+save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/att_net/train_on_frezzed_E1/'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -77,7 +85,7 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-model = BottleneckAttention_modified(dim=3, dim_head=256)
+model = BottleneckAttention_modified(dim=128, dim_head=1024)
 model = model.to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr_start)
@@ -118,13 +126,17 @@ for epoch in range(epoch_start, n_epochs + 1):
         # Get stereo pair
         images_cam1, images_cam2 = data
         # Cut to be multiple of 32 (M)
+        shape = images_cam1.size()
+        images_cam1 = images_cam1[:, :, :M * (shape[2] // M), :M * (shape[3] // M)]
+        images_cam2 = images_cam2[:, :, :M * (shape[2] // M), :M * (shape[3] // M)]
         images_cam1 = images_cam1.to(device)
         images_cam2 = images_cam2.to(device)
 
         ###optimizer.zero_grad()
 
         #mse_1, mse_2, mse_z, img_recon = model(images_cam1, images_cam2)
-        im1_from_im2 = model(images_cam1, images_cam2, images_cam2)#, masked_channels)
+        z1,z2 = model_original(images_cam1, images_cam2, returnZ1Z2=True)
+        im1_from_im2 = model(z1, z2, images_cam2)
 
         loss = lossL1(images_cam1, im1_from_im2)
         #loss = 1 - pytorch_msssim.ms_ssim(im1_from_im2.clamp(0., 1.), images_cam1, data_range=1.0)
