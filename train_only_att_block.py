@@ -29,10 +29,10 @@ model_original.eval()
 #val_folder1 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_02'
 #val_folder2 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_32/image_03'
 
-stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
-stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
-#stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/image_2'
-#stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/image_2'
+#stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_stereo_flow_multiview'
+#stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/data_scene_flow_multiview'
+stereo_dir_2012 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/image_2'
+stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/data_stereo_flow_multiview/train_small_set_2/image_2'
 
 
 #path_holoPix_left_train = '/home/access/dev/Holopix50k/train/left'
@@ -41,8 +41,8 @@ stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/d
 #path_holoPix_left_test = '/home/yuvalh/holopix50k/DATA/Holopix50k/test/left'
 test_model = False
 batch_size = 1
-lr_start = 1e-4
-epoch_patience = 16
+lr_start = 1e-5
+epoch_patience = 200
 n_epochs = 25000
 val_every = 25000
 save_every = 2000

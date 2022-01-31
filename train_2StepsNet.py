@@ -52,16 +52,16 @@ stereo_dir_2015 = '/media/access/SDB500GB/dev/data_sets/kitti/Sharons datasets/d
 #path_holoPix_left_test = '/home/yuvalh/holopix50k/DATA/Holopix50k/test/left'
 
 batch_size = 1
-lr_start = 1e-5
-epoch_patience = 8
+lr_start = 1e-4
+epoch_patience = 100
 n_epochs = 25000
 val_every = 25000
 save_every = 2000
 using_blank_loss = False
 hammingLossOnBinaryZ = False
 useStereoPlusDataSet = False
-start_from_pretrained = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/0.125bpp/model_best_weights_without_conv.pth'
-save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/0.125bpp/'
+start_from_pretrained = ''
+save_path = '/media/access/SDB500GB/dev/iclr_17_compression/ckpoints_newest/checkpoints_new/new_net/Sharons dataset/try_bottle_Att/0.125bpp'
 
 ################ Data transforms ################
 tsfm = transforms.Compose([transforms.ToTensor()])
@@ -98,12 +98,12 @@ print('Using {} device'.format(device))
 
 
 # Load model:
-model = Cheng2020Attention_1bpp_Att()
+#model = Cheng2020Attention_1bpp_Att()
 #model = Cheng2020Attention()
 #model = Cheng2020Attention_ATT()
 #model = Cheng2020Attention_highBitRate2()
 #model = Cheng2020Attention_FIF()
-#model = Cheng2020Attention_1bpp()
+model = Cheng2020Attention_1bpp()
 #model = Cheng2020Attention_0_16bpp()
 #model = Cheng2020Attention_freqSep()
 #model = Cheng2020Attention_smaller_Z()

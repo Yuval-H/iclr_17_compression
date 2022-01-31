@@ -202,7 +202,7 @@ class StereoDataset_HoloPix50k(Dataset):
 class StereoDataset_new(Dataset):
     """Stereo Image Pairs dataset."""
     def __init__(self, stereo_dir_2012, stereo_dir_2015, isTrainingData=True, randomFlip=False, RandomCrop=False,
-                 crop_352_1216=False,colorJitter=False, transform=transforms.ToTensor()):
+                 crop_352_1216=False, colorJitter=False, transform=transforms.ToTensor()):
         """
         Args:
             stereo_dir_2012 (string): Directory with stereo images from 2012 kitti dataset.
@@ -213,10 +213,10 @@ class StereoDataset_new(Dataset):
             transform (optional): Optional transform to be applied on the images.
         """
         subFolder = 'training' if isTrainingData else 'testing'
-        stereo2012_dir = os.path.join(stereo_dir_2012, subFolder, 'image_2')
-        stereo2015_dir = os.path.join(stereo_dir_2015, subFolder, 'image_2')
-        #stereo2012_dir = stereo_dir_2012
-        #stereo2015_dir = stereo_dir_2015
+        #stereo2012_dir = os.path.join(stereo_dir_2012, subFolder, 'image_2')
+        #stereo2015_dir = os.path.join(stereo_dir_2015, subFolder, 'image_2')
+        stereo2012_dir = stereo_dir_2012
+        stereo2015_dir = stereo_dir_2015
         if isTrainingData:
             stereo2012_path_list = glob.glob(os.path.join(stereo2012_dir, '*png'))
             stereo2015_path_list = glob.glob(os.path.join(stereo2015_dir, '*png'))
